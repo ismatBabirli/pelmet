@@ -1,0 +1,34 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: And what did you expect instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+  - type: input
+    id: environment
+    attributes:
+      label: macOS version and Mac model
+      placeholder: e.g. macOS 15.5, 14" MacBook Pro (notched)
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running Pelmet?
+      options:
+        - swift run
+        - Built .app (XcodeGen / Xcode)
+    validations:
+      required: true
