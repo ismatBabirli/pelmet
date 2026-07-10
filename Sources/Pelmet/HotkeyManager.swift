@@ -15,7 +15,9 @@ final class HotkeyManager {
     private let logger = Logger(subsystem: "com.ismatbabirli.Pelmet", category: "HotkeyManager")
 
     /// Registers ⌥⌘B as the global toggle shortcut.
-    func register() {
+    /// - Returns: `true` if the hotkey is live; `false` if installation or
+    ///   registration failed (usually another app already claimed ⌥⌘B).
+    func register() -> Bool {
         var eventType = EventTypeSpec(
             eventClass: OSType(kEventClassKeyboard),
             eventKind: UInt32(kEventHotKeyPressed)
@@ -36,7 +38,7 @@ final class HotkeyManager {
         )
         guard handlerStatus == noErr else {
             logger.error("Failed to install hotkey event handler (OSStatus \(handlerStatus))")
-            return
+            return false
         }
 
         let hotKeyID = EventHotKeyID(signature: fourCharCode("PLMT"), id: 1)
@@ -51,7 +53,9 @@ final class HotkeyManager {
         if hotKeyStatus != noErr {
             // Usually means another app already claimed ⌥⌘B.
             logger.error("Failed to register ⌥⌘B global hotkey (OSStatus \(hotKeyStatus))")
+            return false
         }
+        return true
     }
 
     func unregister() {
