@@ -1,6 +1,6 @@
 name: Pelmet
 options:
-  bundleIdPrefix: com.yourname
+  bundleIdPrefix: com.ismatbabirli
   deploymentTarget:
     macOS: "13.0"
 
@@ -22,7 +22,7 @@ targets:
         NSHumanReadableCopyright: "MIT License"
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.Pelmet
+        PRODUCT_BUNDLE_IDENTIFIER: com.ismatbabirli.Pelmet
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         SWIFT_VERSION: "5.9"
         ENABLE_HARDENED_RUNTIME: true

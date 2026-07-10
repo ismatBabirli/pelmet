@@ -36,10 +36,15 @@ struct SettingsView: View {
             }
 
             Section("General") {
-                Toggle("Launch at login", isOn: $launchAtLogin)
-                    .onChange(of: launchAtLogin) { enabled in
+                // Binding with a setter side effect instead of .onChange —
+                // the non-deprecated onChange(of:initial:_:) needs macOS 14.
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { enabled in
+                        launchAtLogin = enabled
                         updateLaunchAtLogin(enabled)
                     }
+                ))
 
                 if let launchAtLoginError {
                     Text(launchAtLoginError)

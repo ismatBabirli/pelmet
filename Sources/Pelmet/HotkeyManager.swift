@@ -1,4 +1,5 @@
 import Carbon.HIToolbox
+import os
 
 /// Registers a global hotkey using the Carbon RegisterEventHotKey API.
 /// Unlike NSEvent global monitors, this does NOT require the
@@ -11,6 +12,7 @@ final class HotkeyManager {
 
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandlerRef: EventHandlerRef?
+    private let logger = Logger(subsystem: "com.ismatbabirli.Pelmet", category: "HotkeyManager")
 
     /// Registers ⌥⌘B as the global toggle shortcut.
     func register() {
@@ -19,7 +21,7 @@ final class HotkeyManager {
             eventKind: UInt32(kEventHotKeyPressed)
         )
 
-        InstallEventHandler(
+        let handlerStatus = InstallEventHandler(
             GetApplicationEventTarget(),
             { _, _, _ -> OSStatus in
                 DispatchQueue.main.async {
@@ -32,9 +34,13 @@ final class HotkeyManager {
             nil,
             &eventHandlerRef
         )
+        guard handlerStatus == noErr else {
+            logger.error("Failed to install hotkey event handler (OSStatus \(handlerStatus))")
+            return
+        }
 
         let hotKeyID = EventHotKeyID(signature: fourCharCode("PLMT"), id: 1)
-        RegisterEventHotKey(
+        let hotKeyStatus = RegisterEventHotKey(
             UInt32(kVK_ANSI_B),
             UInt32(cmdKey | optionKey),
             hotKeyID,
@@ -42,6 +48,10 @@ final class HotkeyManager {
             0,
             &hotKeyRef
         )
+        if hotKeyStatus != noErr {
+            // Usually means another app already claimed ⌥⌘B.
+            logger.error("Failed to register ⌥⌘B global hotkey (OSStatus \(hotKeyStatus))")
+        }
     }
 
     func unregister() {
