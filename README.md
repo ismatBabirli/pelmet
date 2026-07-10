@@ -7,7 +7,7 @@
 *A pelmet is the board above a window that hides the curtain fittings.
 This one hides your menu bar clutter, so nothing disappears behind the MacBook notch.*
 
-<!-- Restore once CI is re-enabled (see .github/workflows/ci.yml):
+<!-- Restore once CI is re-enabled (see .github/workflows/ci.yml.disabled):
 [![CI](https://img.shields.io/github/actions/workflow/status/ismatBabirli/pelmet/ci.yml?branch=main&label=CI)](https://github.com/ismatBabirli/pelmet/actions/workflows/ci.yml)
 -->
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
