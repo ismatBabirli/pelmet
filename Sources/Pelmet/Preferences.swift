@@ -8,6 +8,14 @@ enum Preferences {
     enum Keys {
         static let autoRehide = "autoRehide"
         static let rehideDelay = "rehideDelay"
+        static let isCollapsed = "isCollapsed"
+    }
+
+    /// Last collapse state, restored at launch. Defaults to expanded so a
+    /// first-time user actually sees the ╱ divider they drag icons against.
+    static var isCollapsed: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.isCollapsed) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.isCollapsed) }
     }
 
     static var autoRehide: Bool {

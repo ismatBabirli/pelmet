@@ -64,14 +64,32 @@ cd pelmet
 swift run
 ```
 
-The toggle and divider appear in your menu bar immediately. Launch-at-login is
-the one feature that needs a real .app bundle:
+The terminal prints a startup banner, the ‹/› toggle appears **next to the
+clock**, and the ╱ divider starts at the left end of your icons. Nothing
+showed up? See [Troubleshooting](#troubleshooting). Launch-at-login is the
+one feature that needs a real .app bundle:
 
 ```bash
 brew install xcodegen
 xcodegen generate
 open Pelmet.xcodeproj   # then build & run with ⌘R
 ```
+
+### Troubleshooting
+
+- **Nothing appeared in the menu bar.** On notched MacBooks, macOS silently
+  hides menu bar items that don't fit — the very problem Pelmet exists to
+  solve — and brand-new items are the first to be swallowed. Quit another
+  menu bar app to free some space, then relaunch Pelmet.
+- **Is it even running?** `swift run` prints a banner once the app is up, and
+  pressing ⌥⌘B flips the chevron between ‹ and ›. No Dock icon or window is
+  normal — Pelmet is a menu-bar-only app.
+- **It quit when I closed the terminal.** Under `swift run` the app belongs to
+  your terminal session; Ctrl-C (or closing the tab) quits it. Build the .app
+  bundle above for a standalone install.
+- **Don't run two copies at once.** Two instances fight over the same status
+  items and saved positions. Quit the first one (right-click the chevron →
+  Quit Pelmet, or Ctrl-C in its terminal).
 
 ## Roadmap
 

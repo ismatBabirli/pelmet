@@ -21,6 +21,9 @@ final class MenuBarManager: NSObject {
     /// Large enough to push items past the left screen edge on any display.
     private let collapsedSeparatorLength: CGFloat = 10_000
 
+    private let toggleAutosaveName = "Pelmet_Toggle"
+    private let separatorAutosaveName = "Pelmet_Separator"
+
     // MARK: - State
 
     private(set) var isCollapsed = false
@@ -32,14 +35,20 @@ final class MenuBarManager: NSObject {
     // MARK: - Setup
 
     func setUp() {
+        seedFirstLaunchPositionIfNeeded()
+
         // Creation order matters only for the very first launch;
         // autosaveName persists whatever arrangement the user ⌘-drags into.
         toggleItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        toggleItem.autosaveName = "Pelmet_Toggle"
+        toggleItem.autosaveName = toggleAutosaveName
         toggleItem.behavior = []
+        // Assigning autosaveName adopts persisted state, so un-hide AFTER it —
+        // recovers an item ⌘-dragged out of the bar by an earlier build.
+        toggleItem.isVisible = true
 
         separatorItem = NSStatusBar.system.statusItem(withLength: expandedSeparatorLength)
-        separatorItem.autosaveName = "Pelmet_Separator"
+        separatorItem.autosaveName = separatorAutosaveName
+        separatorItem.isVisible = true
 
         if let button = toggleItem.button {
             button.target = self
@@ -54,8 +63,27 @@ final class MenuBarManager: NSObject {
             button.toolTip = "⌘-drag icons to the LEFT of this divider to let Pelmet manage them"
         }
 
-        // Start collapsed so the effect is visible immediately.
-        collapse()
+        // Restore the last collapse state. First launch starts EXPANDED:
+        // collapsing would hide nothing (no icons are managed yet) while
+        // turning the ╱ divider into an invisible 10,000 pt spacer.
+        Preferences.isCollapsed ? collapse() : expand()
+    }
+
+    /// macOS stores each status item's position in UserDefaults under
+    /// "NSStatusItem Preferred Position <autosaveName>" — the distance in
+    /// points from the RIGHT screen edge (larger = further left). Undocumented
+    /// but stable since 10.12; Hidden Bar and Ice rely on it. Without a seed,
+    /// a brand-new item is inserted at the LEFT end of the item area — on
+    /// notched MacBooks exactly the region macOS silently swallows when the
+    /// bar is full, which can make a first launch completely invisible.
+    /// Seeding the toggle next to the clock sidesteps that. The separator is
+    /// deliberately NOT seeded: it must start left of every existing icon so
+    /// that nothing is "managed" (hidden on collapse) until the user opts in
+    /// by ⌘-dragging icons across it.
+    private func seedFirstLaunchPositionIfNeeded() {
+        let key = "NSStatusItem Preferred Position \(toggleAutosaveName)"
+        guard UserDefaults.standard.object(forKey: key) == nil else { return }
+        UserDefaults.standard.set(0, forKey: key)
     }
 
     // MARK: - Public actions
@@ -66,6 +94,7 @@ final class MenuBarManager: NSObject {
 
     func expand() {
         isCollapsed = false
+        Preferences.isCollapsed = false
         separatorItem.length = expandedSeparatorLength
         separatorItem.button?.image = separatorImage()
         updateToggleIcon()
@@ -74,6 +103,7 @@ final class MenuBarManager: NSObject {
 
     func collapse() {
         isCollapsed = true
+        Preferences.isCollapsed = true
         rehideTimer?.invalidate()
         separatorItem.length = collapsedSeparatorLength
         // Hide the divider glyph while it's a giant invisible spacer.
