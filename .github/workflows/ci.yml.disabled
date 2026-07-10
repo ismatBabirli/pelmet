@@ -1,0 +1,26 @@
+# CI is disabled while the repo is private: GitHub bills macOS runners
+# against included minutes at a 10x multiplier. Actions are free once the
+# repo is public. To re-enable when Pelmet goes open source:
+#   1. rename this file back to ci.yml (the .disabled suffix is what stops
+#      GitHub from evaluating it — a commented-out .yml still produces a
+#      red "workflow file issue" stub on every push)
+#   2. uncomment the workflow below
+#   3. restore the CI badge in README.md (HTML-commented in the hero)
+#
+# name: CI
+#
+# on:
+#   push:
+#     branches: [main]
+#   pull_request:
+#     branches: [main]
+#
+# jobs:
+#   build:
+#     runs-on: macos-15
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Swift version
+#         run: swift --version
+#       - name: Build
+#         run: swift build

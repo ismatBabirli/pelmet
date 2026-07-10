@@ -1,14 +1,35 @@
+<div align="center">
+
 # Pelmet
 
-An open-source macOS menu bar organizer. A pelmet is the board above a window that hides the curtain fittings — this one hides your menu bar clutter. Hide the icons you rarely need, reveal them with one click or a hotkey — so nothing disappears behind the MacBook notch anymore.
+**Hide the menu bar icons you rarely need — bring them back with one click or ⌥⌘B.**
 
-**Status: MVP scaffold** — hide/show works today with zero special permissions. The notch-aware floating panel is on the roadmap.
+*A pelmet is the board above a window that hides the curtain fittings.
+This one hides your menu bar clutter, so nothing disappears behind the MacBook notch.*
 
-## The problem
+<!-- Restore once CI is re-enabled (see .github/workflows/ci.yml.disabled):
+[![CI](https://img.shields.io/github/actions/workflow/status/ismatBabirli/pelmet/ci.yml?branch=main&label=CI)](https://github.com/ismatBabirli/pelmet/actions/workflows/ci.yml)
+-->
+![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
+![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-On notched MacBooks, macOS silently hides menu bar items that don't fit next to the camera housing. There's no overflow indicator — the icons are just gone. Pelmet gives you back control.
+<!-- TODO(screenshot): add a short GIF of collapse/expand here once recorded, e.g. docs/demo.gif -->
 
-## How it works (no private APIs, no permissions)
+</div>
+
+> [!NOTE]
+> **Status: working MVP.** Hide/show works today with zero special permissions.
+> The notch-aware floating panel is on the [roadmap](#roadmap).
+
+## Why
+
+On notched MacBooks, macOS silently hides menu bar items that don't fit next to
+the camera housing — no overflow indicator, the icons are just *gone*. Pelmet
+gives you back control: park rarely-used icons behind a divider and summon them
+when you need them.
+
+## How it works — no private APIs, no permissions
 
 Pelmet places two items in your menu bar:
 
@@ -19,8 +40,10 @@ Pelmet places two items in your menu bar:
 ```
 
 - **⌘-drag** any menu bar icon to the **left** of the ╱ separator.
-- When collapsed, Pelmet inflates the separator's width to ~10,000 pt, pushing everything left of it past the screen edge. Expand and they slide back.
-- This is the same battle-tested technique used by Hidden Bar and Dozer. It needs **no** Screen Recording or Accessibility permission.
+- When collapsed, Pelmet inflates the separator's width to ~10,000 pt, pushing
+  everything left of it past the screen edge. Expand and they slide back.
+- This is the same battle-tested technique used by Hidden Bar and Dozer. It
+  needs **no** Screen Recording or Accessibility permission.
 
 ## Usage
 
@@ -29,61 +52,51 @@ Pelmet places two items in your menu bar:
 | Show/hide managed icons | Click the ‹ / › toggle, or press **⌥⌘B** |
 | Choose which icons are managed | ⌘-drag them left of the ╱ divider |
 | Settings (auto-rehide, launch at login) | Right-click the toggle → Settings… |
-| Quit | Right-click the toggle → Quit |
+| Quit | Right-click the toggle → Quit Pelmet |
 
-## Building & running
+## Building from source
 
-### Quick test (no Xcode project needed)
+There are no packaged releases yet — building takes under a minute.
 
 ```bash
+git clone https://github.com/ismatBabirli/pelmet.git
+cd pelmet
 swift run
 ```
 
-Runs as an accessory process — the toggle and divider appear in your menu bar immediately. Note: launch-at-login is unavailable in this mode (needs a real .app bundle).
-
-### Proper .app bundle with XcodeGen
+The toggle and divider appear in your menu bar immediately. Launch-at-login is
+the one feature that needs a real .app bundle:
 
 ```bash
 brew install xcodegen
 xcodegen generate
-open Pelmet.xcodeproj
-```
-
-Then build & run (⌘R). Archive → Distribute App → Direct Distribution for a notarized build.
-
-### Manual Xcode project
-
-1. Xcode → New Project → macOS App (name: Pelmet, interface: SwiftUI — we replace the lifecycle anyway).
-2. Delete the generated `*App.swift` and `ContentView.swift`.
-3. Drag everything from `Sources/Pelmet/` into the target.
-4. In the target's Info tab, add **Application is agent (UIElement) = YES** (`LSUIElement`).
-
-## Architecture
-
-```
-main.swift                    AppKit lifecycle entry point
-AppDelegate.swift             Boot: accessory policy, manager, hotkey
-MenuBarManager.swift          Core hide/show logic (expanding spacer)
-HotkeyManager.swift           Carbon global hotkey (⌥⌘B), permission-free
-Preferences.swift             UserDefaults keys shared with SwiftUI
-Settings/SettingsView.swift   SwiftUI settings (auto-rehide, login item)
-Settings/SettingsWindowController.swift
+open Pelmet.xcodeproj   # then build & run with ⌘R
 ```
 
 ## Roadmap
 
-- [ ] **Notch panel** — a blurred, rounded floating panel below the notch that renders hidden icons live via ScreenCaptureKit and forwards clicks with CGEvent. (Requires Screen Recording permission; keep it opt-in.)
-- [ ] Show-on-hover: reveal when the mouse touches the menu bar
-- [ ] Per-item rules and profiles (e.g. "presentation mode")
-- [ ] Custom hotkey recorder (replace hardcoded ⌥⌘B)
-- [ ] Sparkle auto-updates, Homebrew cask, notarized releases via GitHub Actions
+- [ ] **Notch panel** — a blurred, rounded panel below the notch that shows hidden icons live and forwards clicks (opt-in Screen Recording)
+- [ ] Show on hover — reveal when the pointer touches the menu bar
+- [ ] Profiles and per-item rules (e.g. "presentation mode")
+- [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
+- [ ] Notarized releases, Homebrew cask, Sparkle updates
 
-## Prior art worth studying
+The full vision and phased plan live in [PROJECT.md](PROJECT.md).
+
+## Prior art
+
+Pelmet stands on the shoulders of some excellent open-source projects:
 
 - [Ice](https://github.com/jordanbaird/Ice) (MIT) — the most advanced open-source option; its "Ice Bar" panel is the reference for our notch panel
 - [Hidden Bar](https://github.com/dwarvesf/hidden) (MIT) — origin of the expanding-spacer trick
 - [Dozer](https://github.com/Mortennn/Dozer) (MIT)
 
+## Contributing
+
+Bug reports, ideas, and small PRs are very welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for a two-minute guide and a map of the
+codebase.
+
 ## License
 
-MIT
+[MIT](LICENSE) © 2026 Ismat Babirli
