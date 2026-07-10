@@ -1,0 +1,31 @@
+name: Pelmet
+options:
+  bundleIdPrefix: com.yourname
+  deploymentTarget:
+    macOS: "13.0"
+
+targets:
+  Pelmet:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/Pelmet
+    info:
+      path: Sources/Pelmet/Info.plist
+      properties:
+        CFBundleDisplayName: Pelmet
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "13.0"
+        # Menu-bar-only app: no Dock icon, no app switcher entry.
+        LSUIElement: true
+        NSHumanReadableCopyright: "MIT License"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yourname.Pelmet
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5.9"
+        ENABLE_HARDENED_RUNTIME: true
+        # App Sandbox intentionally OFF for now; distribute outside
+        # the Mac App Store (GitHub Releases + Homebrew cask).
+        ENABLE_APP_SANDBOX: false
