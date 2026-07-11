@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="Resources/pelmet-icon.png" alt="Pelmet" width="168" height="168">
+
 # Pelmet
 
 **Hide the menu bar icons you rarely need — bring them back with one click or ⌥⌘B.**

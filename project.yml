@@ -10,10 +10,12 @@ targets:
     platform: macOS
     sources:
       - Sources/Pelmet
+      - Resources/Assets.xcassets
     info:
       path: Sources/Pelmet/Info.plist
       properties:
         CFBundleDisplayName: Pelmet
+        CFBundleIconName: AppIcon
         CFBundleShortVersionString: "0.1.0"
         CFBundleVersion: "1"
         LSMinimumSystemVersion: "13.0"
@@ -23,6 +25,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ismatbabirli.Pelmet
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "13.0"
         SWIFT_VERSION: "5.9"
         ENABLE_HARDENED_RUNTIME: true

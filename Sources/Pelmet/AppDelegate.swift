@@ -6,6 +6,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Run as a menu-bar-only app (no Dock icon, no main window).
         NSApp.setActivationPolicy(.accessory)
 
+        // Refuse to launch a second copy: two instances each add a toggle +
+        // separator and both inflate a 10,000 pt spacer, shoving each other's
+        // items off-screen so every chevron looks dead. The lock is released
+        // automatically when this process exits. See acquireSingleInstanceLock.
+        guard Self.acquireSingleInstanceLock() else {
+            print("Another copy of Pelmet is already running — quitting this one.")
+            fflush(stdout)
+            NSApp.terminate(nil)
+            return
+        }
+
         MenuBarManager.shared.setUp()
 
         // Global hotkey: ⌥⌘B toggles hidden items.
@@ -19,6 +30,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         true
+    }
+
+    /// Ensures only one Pelmet runs at a time. An advisory file lock works across
+    /// both a bundled `.app` and `swift run` (which has no bundle id, so
+    /// `NSRunningApplication` bundle-id checks miss it), and the kernel releases
+    /// it automatically when the process exits — even on crash — so no stale lock
+    /// can wedge future launches.
+    private static func acquireSingleInstanceLock() -> Bool {
+        let path = (NSTemporaryDirectory() as NSString)
+            .appendingPathComponent("com.ismatbabirli.Pelmet.single-instance.lock")
+        let fd = open(path, O_CREAT | O_RDWR, 0o644)
+        guard fd != -1 else { return true }  // fail open: never block startup on a lock error
+        guard flock(fd, LOCK_EX | LOCK_NB) == 0 else {
+            close(fd)
+            return false
+        }
+        // Deliberately keep `fd` open for the process lifetime to hold the lock.
+        return true
     }
 
     /// Terminal feedback for `swift run` users — the only way to tell an
