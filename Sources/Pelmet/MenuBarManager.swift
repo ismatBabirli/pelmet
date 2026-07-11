@@ -63,10 +63,16 @@ final class MenuBarManager: NSObject {
             button.toolTip = "⌘-drag icons to the LEFT of this divider to let Pelmet manage them"
         }
 
-        // Restore the last collapse state. First launch starts EXPANDED:
-        // collapsing would hide nothing (no icons are managed yet) while
-        // turning the ╱ divider into an invisible 10,000 pt spacer.
-        Preferences.isCollapsed ? collapse() : expand()
+        // Restore the last collapse state. First launch starts EXPANDED and
+        // STAYS expanded — collapsing would hide nothing (no icons are managed
+        // yet) while turning the ╱ divider into an invisible 10,000 pt spacer.
+        // Auto-rehide follows a user-initiated reveal, NOT this launch restore,
+        // so pass scheduleRehide: false to avoid the app collapsing itself.
+        if Preferences.isCollapsed {
+            collapse()
+        } else {
+            expand(scheduleRehide: false)
+        }
     }
 
     /// macOS stores each status item's position in UserDefaults under
@@ -92,13 +98,13 @@ final class MenuBarManager: NSObject {
         isCollapsed ? expand() : collapse()
     }
 
-    func expand() {
+    func expand(scheduleRehide: Bool = true) {
         isCollapsed = false
         Preferences.isCollapsed = false
         separatorItem.length = expandedSeparatorLength
         separatorItem.button?.image = separatorImage()
         updateToggleIcon()
-        scheduleRehideIfNeeded()
+        if scheduleRehide { scheduleRehideIfNeeded() }
     }
 
     func collapse() {
