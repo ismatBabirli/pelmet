@@ -5,6 +5,8 @@ struct SettingsView: View {
 
     @AppStorage(Preferences.Keys.autoRehide) private var autoRehide = true
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
+    @AppStorage(Preferences.Keys.showSwallowedCount) private var showSwallowedCount = true
+    @ObservedObject private var status = LayoutStatus.shared
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
 
@@ -35,6 +37,38 @@ struct SettingsView: View {
                 }
             }
 
+            if status.hasNotchedDisplay {
+                Section("Menu Bar Space") {
+                    LabeledContent(
+                        "Icons that don't fit",
+                        value: status.swallowedCount == 0 ? "None right now" : "\(status.swallowedCount)"
+                    )
+                    Toggle("Show a count on the chevron when icons don't fit", isOn: $showSwallowedCount)
+                    LabeledContent("Icon spacing", value: status.spacingProfile.label)
+                    HStack {
+                        Button("Make Room…") {
+                            MakeRoomWindowController.shared.show()
+                        }
+                        if status.spacingProfile != .systemDefault {
+                            Button("Restore Default Spacing…") {
+                                MenuBarSpacing.apply(.systemDefault)
+                                status.refreshSpacing()
+                            }
+                        }
+                    }
+                }
+            } else {
+                Section("Menu Bar Space") {
+                    Label {
+                        Text("This Mac has no camera notch — icons rarely run out of room.")
+                    } icon: {
+                        Image(systemName: "info.circle")
+                    }
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                }
+            }
+
             Section("General") {
                 // Binding with a setter side effect instead of .onChange —
                 // the non-deprecated onChange(of:initial:_:) needs macOS 14.
@@ -53,6 +87,10 @@ struct SettingsView: View {
                 }
 
                 LabeledContent("Toggle shortcut", value: "⌥⌘B")
+
+                Button("Show Welcome Tips Again") {
+                    OnboardingController.shared.replayTips()
+                }
             }
         }
         .formStyle(.grouped)

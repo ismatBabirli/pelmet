@@ -32,6 +32,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    /// HIG: "avoid relying on the presence of menu bar extras." If the user
+    /// can't find Pelmet in the bar at all, launching it again from Finder,
+    /// Spotlight or the Dock lands here — open Settings as the escape hatch.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows: Bool) -> Bool {
+        SettingsWindowController.shared.show()
+        return false
+    }
+
     /// Ensures only one Pelmet runs at a time. An advisory file lock works across
     /// both a bundled `.app` and `swift run` (which has no bundle id, so
     /// `NSRunningApplication` bundle-id checks miss it), and the kernel releases
@@ -71,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lines.append(contentsOf: [
             "  • A number next to the chevron (like +3) means that many icons don't fit",
             "    beside the notch — right-click the chevron for tips.",
+            "  • Can't find Pelmet in the bar? Launching it again opens its Settings window.",
             "  • Ctrl-C here (or closing this terminal) quits Pelmet.",
         ])
         print(lines.joined(separator: "\n"))

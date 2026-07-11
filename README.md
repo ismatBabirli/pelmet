@@ -65,6 +65,7 @@ Pelmet places two items in your menu bar:
 | Keep an icon always visible | ⌘-drag it to the **right** of the ╱ divider |
 | See why icons are missing | Hover or right-click the toggle when it shows **+N** |
 | Lost the divider? | Right-click the toggle → Reset Divider Position |
+| Fit more icons beside the notch | Settings → Make Room… (incl. tighter icon spacing) |
 | Settings (auto-rehide, launch at login) | Right-click the toggle → Settings… |
 | Quit | Right-click the toggle → Quit Pelmet |
 
