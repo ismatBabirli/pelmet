@@ -49,6 +49,7 @@ final class MenuBarManager: NSObject {
     /// Latest confirmed layout facts from NotchLayoutMonitor.
     private var swallowedCount = 0
     private var separatorSwallowed = false
+    private var latestClassification: LayoutClassification?
 
     private var toggleRescueAttempts = 0
     private var lastToggleRescue = Date.distantPast
@@ -89,6 +90,25 @@ final class MenuBarManager: NSObject {
         ) { [weak self] _ in
             guard let self, self.isCollapsed else { return }
             self.separatorItem.length = self.collapsedSeparatorLength
+        }
+
+        // Never auto-collapse under an open tip popover or Pelmet window;
+        // restart the full delay once everything is closed.
+        UIActivityTracker.shared.onFirstOpened = { [weak self] in
+            self?.rehideTimer?.invalidate()
+        }
+        UIActivityTracker.shared.onAllClosed = { [weak self] in
+            guard let self, !self.isCollapsed else { return }
+            self.scheduleRehideIfNeeded()
+        }
+
+        // The Settings toggle for the chevron count writes straight to
+        // UserDefaults (@AppStorage); reflect changes immediately.
+        NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.updateToggleIcon()
         }
 
         // Restore the last collapse state. First launch starts EXPANDED and
@@ -184,13 +204,37 @@ final class MenuBarManager: NSObject {
     // MARK: - Layout monitoring
 
     private func apply(_ classification: LayoutClassification) {
+        latestClassification = classification
         swallowedCount = classification.swallowedCount
         separatorSwallowed = !isCollapsed && classification.separatorHealth == .swallowed
         updateToggleIcon()
 
+        LayoutStatus.shared.refresh(swallowedCount: swallowedCount)
+        if isCollapsed, classification.offscreenLeftCount > 0, !Preferences.hasEverManagedItems {
+            Preferences.hasEverManagedItems = true
+        }
+
         if !classification.toggleVisible {
             rescueToggleIfNeeded()
         }
+
+        reapplyOnboardingChecks()
+    }
+
+    /// Runs the pending one-time tips against the latest confirmed layout.
+    /// Called on every confirmed snapshot and again when a tip closes (the
+    /// tips chain: divider → toggle → count education).
+    func reapplyOnboardingChecks() {
+        guard let classification = latestClassification, !isCollapsed else { return }
+        OnboardingController.shared.maybeShowLaunchTips(
+            separator: separatorItem,
+            toggle: toggleItem,
+            separatorVisible: classification.separatorHealth == .visible
+        )
+        OnboardingController.shared.maybeShowSwallowedEducation(
+            count: classification.swallowedCount,
+            toggle: toggleItem
+        )
     }
 
     /// The toggle is the escape hatch — if it ever gets swallowed the user
@@ -240,7 +284,7 @@ final class MenuBarManager: NSObject {
             accessibilityDescription: isCollapsed ? "Show hidden icons" : "Hide icons"
         )
 
-        let showCount = !isCollapsed && swallowedCount > 0
+        let showCount = !isCollapsed && swallowedCount > 0 && Preferences.showSwallowedCount
         if showCount {
             button.attributedTitle = NSAttributedString(
                 string: "+\(swallowedCount)",
@@ -313,6 +357,15 @@ final class MenuBarManager: NSObject {
                 ]
             )
             menu.addItem(hint)
+
+            let makeRoomEntry = NSMenuItem(
+                title: "Make Room…",
+                action: #selector(openMakeRoom),
+                keyEquivalent: ""
+            )
+            makeRoomEntry.target = self
+            menu.addItem(makeRoomEntry)
+
             menu.addItem(.separator())
         }
 
@@ -374,7 +427,8 @@ final class MenuBarManager: NSObject {
 
     private func scheduleRehideIfNeeded() {
         rehideTimer?.invalidate()
-        guard Preferences.autoRehide else { return }
+        guard Preferences.autoRehide,
+              UIActivityTracker.shared.openSurfaces == 0 else { return }
         rehideTimer = Timer.scheduledTimer(
             withTimeInterval: Preferences.rehideDelay,
             repeats: false
@@ -385,5 +439,9 @@ final class MenuBarManager: NSObject {
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func openMakeRoom() {
+        MakeRoomWindowController.shared.show()
     }
 }

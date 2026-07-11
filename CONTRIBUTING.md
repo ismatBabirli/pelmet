@@ -44,6 +44,11 @@ geometry lives in `Sources/PelmetCore/`.
 | `NotchLayoutMonitor.swift` | Event-driven measurement: when to look at the menu bar layout |
 | `WindowListSource.swift` | The only window-server touchpoint (permission-free metadata) |
 | `StatusItemRescuer.swift` | Safe recreate-at-position for Pelmet's own items |
+| `Onboarding/OnboardingController.swift` | One-time teaching popovers (divider, toggle, count) |
+| `MakeRoom/MakeRoomWindowController.swift` | Remedies window incl. the icon-spacing tweak |
+| `MenuBarSpacing.swift` | NSStatusItemSpacing/SelectionPadding profiles (per-host defaults) |
+| `LayoutStatus.swift` | Bridges live layout facts into SwiftUI |
+| `UIActivityTracker.swift` | Pauses auto-rehide while Pelmet UI is open |
 | `HotkeyManager.swift` | Carbon global hotkey (⌥⌘B), permission-free |
 | `Preferences.swift` | UserDefaults keys shared between AppKit and SwiftUI |
 | `Settings/SettingsView.swift` | SwiftUI settings form |
