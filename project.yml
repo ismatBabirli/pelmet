@@ -5,9 +5,23 @@ options:
     macOS: "13.0"
 
 targets:
+  # Pure geometry/classification, mirrored from Package.swift so
+  # `import PelmetCore` resolves in the Xcode build too.
+  PelmetCore:
+    type: library.static
+    platform: macOS
+    sources:
+      - Sources/PelmetCore
+    settings:
+      base:
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        SWIFT_VERSION: "5.0"
+
   Pelmet:
     type: application
     platform: macOS
+    dependencies:
+      - target: PelmetCore
     sources:
       - Sources/Pelmet
       - Resources/Assets.xcassets
@@ -27,7 +41,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.ismatbabirli.Pelmet
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         MACOSX_DEPLOYMENT_TARGET: "13.0"
-        SWIFT_VERSION: "5.9"
+        # Swift 5 language mode, matching Package.swift's swiftLanguageModes.
+        SWIFT_VERSION: "5.0"
         ENABLE_HARDENED_RUNTIME: true
         # App Sandbox intentionally OFF for now; distribute outside
         # the Mac App Store (GitHub Releases + Homebrew cask).

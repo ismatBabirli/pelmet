@@ -13,7 +13,7 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 [![CI](https://img.shields.io/github/actions/workflow/status/ismatBabirli/pelmet/ci.yml?branch=main&label=CI)](https://github.com/ismatBabirli/pelmet/actions/workflows/ci.yml)
 -->
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
-![Swift 5.9](https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white)
+![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 <!-- TODO(screenshot): add a short GIF of collapse/expand here once recorded, e.g. docs/demo.gif -->
@@ -29,7 +29,10 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 On notched MacBooks, macOS silently hides menu bar items that don't fit next to
 the camera housing — no overflow indicator, the icons are just *gone*. Pelmet
 gives you back control: park rarely-used icons behind a divider and summon them
-when you need them.
+when you need them. And when icons *still* don't fit, Pelmet is the only tool
+that tells you — a small **+3** appears next to its chevron, with tips one
+right-click away. No other utility detects this, and Pelmet does it with zero
+permissions.
 
 ## How it works — no private APIs, no permissions
 
@@ -41,18 +44,27 @@ Pelmet places two items in your menu bar:
              separator                    toggle
 ```
 
-- **⌘-drag** any menu bar icon to the **left** of the ╱ separator.
-- When collapsed, Pelmet inflates the separator's width to ~10,000 pt, pushing
-  everything left of it past the screen edge. Expand and they slide back.
+- Pelmet hides everything to the **left** of the ╱ separator — **⌘-drag** the
+  icons you always want visible to its **right**, next to the clock.
+- When collapsed, Pelmet inflates the separator's width (bounded at ~4,000 pt —
+  macOS caps status-item windows near 5,000 pt), pushing everything left of it
+  past the screen edge. Expand and they slide back.
 - This is the same battle-tested technique used by Hidden Bar and Dozer. It
   needs **no** Screen Recording or Accessibility permission.
+- If the expanded icons don't all fit beside the notch, the toggle shows a
+  count (e.g. **› +3**) instead of letting them vanish without a trace.
+  Right-click it for ways to make room. Detection uses only public
+  window-geometry metadata — nothing that prompts for permissions or lights
+  the screen-recording indicator.
 
 ## Usage
 
 | Action | How |
 |---|---|
 | Show/hide managed icons | Click the ‹ / › toggle, or press **⌥⌘B** |
-| Choose which icons are managed | ⌘-drag them left of the ╱ divider |
+| Keep an icon always visible | ⌘-drag it to the **right** of the ╱ divider |
+| See why icons are missing | Hover or right-click the toggle when it shows **+N** |
+| Lost the divider? | Right-click the toggle → Reset Divider Position |
 | Settings (auto-rehide, launch at login) | Right-click the toggle → Settings… |
 | Quit | Right-click the toggle → Quit Pelmet |
 
@@ -66,10 +78,11 @@ cd pelmet
 swift run
 ```
 
-The terminal prints a startup banner, the ‹/› toggle appears **next to the
-clock**, and the ╱ divider starts at the left end of your icons. Nothing
-showed up? See [Troubleshooting](#troubleshooting). Launch-at-login is the
-one feature that needs a real .app bundle:
+The terminal prints a startup banner, and both the ‹/› toggle and the ╱
+divider appear **next to the clock** — always visible, never behind the
+notch. Building needs a Swift 6 toolchain (Xcode 16+ or recent Command Line
+Tools); the app itself runs on macOS 13+. Launch-at-login is the one feature
+that needs a real .app bundle:
 
 ```bash
 brew install xcodegen
@@ -79,10 +92,16 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 ### Troubleshooting
 
-- **Nothing appeared in the menu bar.** On notched MacBooks, macOS silently
-  hides menu bar items that don't fit — the very problem Pelmet exists to
-  solve — and brand-new items are the first to be swallowed. Quit another
-  menu bar app to free some space, then relaunch Pelmet.
+- **Nothing appeared in the menu bar.** Pelmet's toggle and divider are
+  seeded right next to the clock, the last spot macOS swallows, so this
+  should be rare. If your bar is packed edge to edge, quit another menu bar
+  app to free some space, then relaunch Pelmet.
+- **A number like +3 sits next to the chevron.** That many icons don't fit
+  beside the notch, so macOS is hiding them (it never says so itself).
+  Right-click the chevron for tips: ⌘-drag important icons toward the clock,
+  hide expendable ones behind ╱, or quit unused menu bar apps.
+- **I can't find the ╱ divider.** Right-click the chevron → Reset Divider
+  Position brings it back next to the toggle.
 - **Is it even running?** `swift run` prints a banner once the app is up, and
   pressing ⌥⌘B flips the chevron between ‹ and ›. No Dock icon or window is
   normal — Pelmet is a menu-bar-only app.
@@ -107,7 +126,7 @@ The full vision and phased plan live in [PROJECT.md](PROJECT.md).
 
 Pelmet stands on the shoulders of some excellent open-source projects:
 
-- [Ice](https://github.com/jordanbaird/Ice) (MIT) — the most advanced open-source option; its "Ice Bar" panel is the reference for our notch panel
+- [Ice](https://github.com/jordanbaird/Ice) (GPL-3.0) — the most advanced open-source option; its "Ice Bar" panel is the behavior reference for our notch panel (GPL — we reference behavior, never code)
 - [Hidden Bar](https://github.com/dwarvesf/hidden) (MIT) — origin of the expanding-spacer trick
 - [Dozer](https://github.com/Mortennn/Dozer) (MIT)
 

@@ -58,18 +58,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var lines = [
             "Pelmet is running as a menu-bar-only app (no Dock icon, no window).",
             "  Look for the ‹/› chevron toggle next to the clock; the ╱ divider",
-            "  sits at the left end of your menu bar icons.",
+            "  sits just left of the chevron.",
             hotkeyRegistered
-                ? "  • Click the chevron or press ⌥⌘B to hide/show items."
-                : "  • Click the chevron to hide/show items. (⌥⌘B is unavailable — another app claimed it.)",
-            "  • ⌘-drag icons to the LEFT of ╱ to let Pelmet manage them.",
+                ? "  • Click the chevron or press ⌥⌘B to hide/show icons."
+                : "  • Click the chevron to hide/show icons. (⌥⌘B is unavailable — another app claimed it.)",
+            "  • Pelmet hides everything LEFT of ╱ — ⌘-drag icons you always",
+            "    want visible to its RIGHT, next to the clock.",
         ]
         if Preferences.autoRehide {
-            lines.append("  • Revealed items re-hide after \(Int(Preferences.rehideDelay)) s (right-click the chevron → Settings).")
+            lines.append("  • Revealed icons re-hide after \(Int(Preferences.rehideDelay)) s (right-click the chevron → Settings).")
         }
         lines.append(contentsOf: [
-            "  • Nothing visible? A full menu bar or the notch hides items that don't fit —",
-            "    quit another menu bar app to free space, then relaunch Pelmet.",
+            "  • A number next to the chevron (like +3) means that many icons don't fit",
+            "    beside the notch — right-click the chevron for tips.",
             "  • Ctrl-C here (or closing this terminal) quits Pelmet.",
         ])
         print(lines.joined(separator: "\n"))

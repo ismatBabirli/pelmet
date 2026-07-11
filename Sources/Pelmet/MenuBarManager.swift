@@ -1,4 +1,5 @@
 import AppKit
+import PelmetCore
 
 /// Manages two NSStatusItems:
 ///
@@ -6,11 +7,16 @@ import AppKit
 ///  │  [hidden icons...]  |separator|  [always-visible icons...] [toggle]  clock │
 ///  └───────────────────────────────────────────────────────────────┘
 ///
-/// Anything the user ⌘-drags to the LEFT of the separator is controlled
-/// by Pelmet. When collapsed, the separator's length is inflated to a
-/// huge value, pushing everything left of it off the screen edge —
-/// the same technique used by Hidden Bar / Dozer. No private APIs,
-/// no Screen Recording or Accessibility permission required.
+/// Anything to the LEFT of the separator is controlled by Pelmet. When
+/// collapsed, the separator's length is inflated to push everything left of
+/// it off the screen edge — the same technique used by Hidden Bar / Dozer.
+/// No private APIs, no Screen Recording or Accessibility permission required.
+///
+/// On notched MacBooks, macOS silently refuses to draw status items that
+/// don't fit beside the notch. Pelmet can't force them on screen (nobody
+/// can, without heavy permissions) — but it detects the situation via
+/// NotchLayoutMonitor and says so on the toggle, so an expand that can't
+/// show everything doesn't just look broken.
 final class MenuBarManager: NSObject {
 
     static let shared = MenuBarManager()
@@ -18,8 +24,16 @@ final class MenuBarManager: NSObject {
     // MARK: - Configuration
 
     private let expandedSeparatorLength: CGFloat = 10
-    /// Large enough to push items past the left screen edge on any display.
-    private let collapsedSeparatorLength: CGFloat = 10_000
+
+    /// Collapse works by inflating the separator so items left of it are
+    /// pushed past the screen edge. Bounded because huge lengths misbehave:
+    /// macOS 26.5 silently caps a status item window near 5,000pt (measured
+    /// — a 10,000pt request displaces neighbors by only ~5,000), and Hidden
+    /// Bar saw pathological layout behavior with unbounded values.
+    private var collapsedSeparatorLength: CGFloat {
+        let widestScreen = NSScreen.screens.map(\.frame.width).max() ?? 2_000
+        return max(500, min(widestScreen + 200, 4_000))
+    }
 
     private let toggleAutosaveName = "Pelmet_Toggle"
     private let separatorAutosaveName = "Pelmet_Separator"
@@ -32,64 +46,108 @@ final class MenuBarManager: NSObject {
     private var toggleItem: NSStatusItem!
     private var separatorItem: NSStatusItem!
 
+    /// Latest confirmed layout facts from NotchLayoutMonitor.
+    private var swallowedCount = 0
+    private var separatorSwallowed = false
+
+    private var toggleRescueAttempts = 0
+    private var lastToggleRescue = Date.distantPast
+
     // MARK: - Setup
 
     func setUp() {
-        seedFirstLaunchPositionIfNeeded()
+        seedFirstLaunchPositionsIfNeeded()
 
-        // Creation order matters only for the very first launch;
-        // autosaveName persists whatever arrangement the user ⌘-drags into.
-        toggleItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        // variableLength so the "+N" overflow count fits next to the chevron;
+        // with an empty title the width matches the old square item.
+        toggleItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         toggleItem.autosaveName = toggleAutosaveName
         toggleItem.behavior = []
         // Assigning autosaveName adopts persisted state, so un-hide AFTER it —
         // recovers an item ⌘-dragged out of the bar by an earlier build.
         toggleItem.isVisible = true
+        configureToggleButton(toggleItem)
 
         separatorItem = NSStatusBar.system.statusItem(withLength: expandedSeparatorLength)
         separatorItem.autosaveName = separatorAutosaveName
         separatorItem.isVisible = true
+        configureSeparatorButton(separatorItem)
 
-        if let button = toggleItem.button {
-            button.target = self
-            button.action = #selector(toggleButtonClicked(_:))
-            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-            button.toolTip = "Pelmet — click to show/hide menu bar items (⌥⌘B)"
+        NotchLayoutMonitor.shared.attach(
+            separator: separatorItem,
+            toggle: toggleItem,
+            isCollapsed: { [weak self] in self?.isCollapsed ?? false }
+        )
+        NotchLayoutMonitor.shared.onConfirmedChange = { [weak self] classification in
+            self?.apply(classification)
         }
 
-        if let button = separatorItem.button {
-            button.image = separatorImage()
-            button.appearsDisabled = true
-            button.toolTip = "⌘-drag icons to the LEFT of this divider to let Pelmet manage them"
+        // Recompute the bounded collapse length when displays change.
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self, self.isCollapsed else { return }
+            self.separatorItem.length = self.collapsedSeparatorLength
         }
 
         // Restore the last collapse state. First launch starts EXPANDED and
-        // STAYS expanded — collapsing would hide nothing (no icons are managed
-        // yet) while turning the ╱ divider into an invisible 10,000 pt spacer.
-        // Auto-rehide follows a user-initiated reveal, NOT this launch restore,
-        // so pass scheduleRehide: false to avoid the app collapsing itself.
+        // STAYS expanded — nothing hides until the user acts. Auto-rehide
+        // follows a user-initiated reveal, NOT this launch restore.
         if Preferences.isCollapsed {
             collapse()
         } else {
             expand(scheduleRehide: false)
         }
+
+        NotchLayoutMonitor.shared.requestMeasurement(reason: .launch)
     }
 
     /// macOS stores each status item's position in UserDefaults under
-    /// "NSStatusItem Preferred Position <autosaveName>" — the distance in
-    /// points from the RIGHT screen edge (larger = further left). Undocumented
-    /// but stable since 10.12; Hidden Bar and Ice rely on it. Without a seed,
-    /// a brand-new item is inserted at the LEFT end of the item area — on
-    /// notched MacBooks exactly the region macOS silently swallows when the
-    /// bar is full, which can make a first launch completely invisible.
-    /// Seeding the toggle next to the clock sidesteps that. The separator is
-    /// deliberately NOT seeded: it must start left of every existing icon so
-    /// that nothing is "managed" (hidden on collapse) until the user opts in
-    /// by ⌘-dragging icons across it.
-    private func seedFirstLaunchPositionIfNeeded() {
-        let key = "NSStatusItem Preferred Position \(toggleAutosaveName)"
-        guard UserDefaults.standard.object(forKey: key) == nil else { return }
-        UserDefaults.standard.set(0, forKey: key)
+    /// "NSStatusItem Preferred Position <autosaveName>" — an order hint where
+    /// smaller = closer to the RIGHT screen edge. Undocumented but stable;
+    /// Hidden Bar and Ice rely on it, and Ice seeds exactly these values.
+    ///
+    /// Without a seed, a brand-new item is inserted at the LEFT end of the
+    /// item area — on notched MacBooks exactly the region macOS silently
+    /// swallows when the bar is full, which made the ╱ divider invisible on
+    /// crowded bars (and a first launch look completely dead). Seeding the
+    /// toggle at 0 and the divider at 1 places both next to the clock, where
+    /// they are always visible. The divider starts with every icon on its
+    /// managed (left) side: nothing hides until the user collapses, and the
+    /// icons to keep visible are ⌘-dragged to the RIGHT of ╱.
+    ///
+    /// Per-key guards make this self-healing: an existing install whose
+    /// divider was never ⌘-dragged (because it was born invisible) has no
+    /// separator key, so the seed applies on the next launch.
+    private func seedFirstLaunchPositionsIfNeeded() {
+        let seeds: [(name: String, position: CGFloat)] = [
+            (toggleAutosaveName, 0),
+            (separatorAutosaveName, 1),
+        ]
+        for seed in seeds {
+            let key = "NSStatusItem Preferred Position \(seed.name)"
+            if UserDefaults.standard.object(forKey: key) == nil {
+                UserDefaults.standard.set(seed.position, forKey: key)
+            }
+        }
+    }
+
+    private func configureToggleButton(_ item: NSStatusItem) {
+        guard let button = item.button else { return }
+        button.target = self
+        button.action = #selector(toggleButtonClicked(_:))
+        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        button.imagePosition = .imageLeading
+        button.setAccessibilityLabel("Pelmet")
+    }
+
+    private func configureSeparatorButton(_ item: NSStatusItem) {
+        guard let button = item.button else { return }
+        button.image = separatorImage()
+        button.appearsDisabled = true
+        button.toolTip = "Pelmet hides everything left of this divider — ⌘-drag icons you always want visible to its right."
+        button.setAccessibilityLabel("Pelmet divider")
     }
 
     // MARK: - Public actions
@@ -105,6 +163,7 @@ final class MenuBarManager: NSObject {
         separatorItem.button?.image = separatorImage()
         updateToggleIcon()
         if scheduleRehide { scheduleRehideIfNeeded() }
+        NotchLayoutMonitor.shared.requestMeasurement(reason: .expandSettled)
     }
 
     func collapse() {
@@ -114,7 +173,201 @@ final class MenuBarManager: NSObject {
         separatorItem.length = collapsedSeparatorLength
         // Hide the divider glyph while it's a giant invisible spacer.
         separatorItem.button?.image = nil
+        // A count would now include the icons we intentionally hid — clear
+        // immediately rather than waiting for the next measurement.
+        swallowedCount = 0
+        separatorSwallowed = false
         updateToggleIcon()
+        NotchLayoutMonitor.shared.requestMeasurement(reason: .collapseSettled)
+    }
+
+    // MARK: - Layout monitoring
+
+    private func apply(_ classification: LayoutClassification) {
+        swallowedCount = classification.swallowedCount
+        separatorSwallowed = !isCollapsed && classification.separatorHealth == .swallowed
+        updateToggleIcon()
+
+        if !classification.toggleVisible {
+            rescueToggleIfNeeded()
+        }
+    }
+
+    /// The toggle is the escape hatch — if it ever gets swallowed the user
+    /// has no way back, so it alone is rescued automatically (rate-limited).
+    private func rescueToggleIfNeeded() {
+        guard toggleRescueAttempts < 2,
+              Date().timeIntervalSince(lastToggleRescue) > 60 else { return }
+        toggleRescueAttempts += 1
+        lastToggleRescue = Date()
+
+        if isCollapsed {
+            // Collapsed with an unreachable toggle means locked out: reveal
+            // first so the rescued toggle has somewhere visible to land.
+            expand(scheduleRehide: false)
+        }
+        toggleItem = StatusItemRescuer.recreate(
+            toggleItem,
+            autosaveName: toggleAutosaveName,
+            length: NSStatusItem.variableLength,
+            preferredPosition: 0,
+            configure: { [weak self] item in self?.configureToggleButton(item) }
+        )
+        updateToggleIcon()
+        NotchLayoutMonitor.shared.reattach(separator: separatorItem, toggle: toggleItem)
+    }
+
+    // MARK: - UI plumbing
+
+    @objc private func toggleButtonClicked(_ sender: NSStatusBarButton) {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showContextMenu()
+        } else {
+            toggle()
+        }
+    }
+
+    /// State is conveyed by the chevron glyph and a plain-text count ONLY —
+    /// never a colored dot. Small colored dots in the menu bar are macOS
+    /// privacy vocabulary (green = camera, orange = mic, purple = screen
+    /// capture) and a badge in that grammar reads as a recording alarm.
+    private func updateToggleIcon() {
+        guard let button = toggleItem.button else { return }
+
+        let symbol = isCollapsed ? "chevron.left" : "chevron.right"
+        button.image = NSImage(
+            systemSymbolName: symbol,
+            accessibilityDescription: isCollapsed ? "Show hidden icons" : "Hide icons"
+        )
+
+        let showCount = !isCollapsed && swallowedCount > 0
+        if showCount {
+            button.attributedTitle = NSAttributedString(
+                string: "+\(swallowedCount)",
+                attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)]
+            )
+        } else {
+            button.attributedTitle = NSAttributedString(string: "")
+        }
+
+        let tooltip: String
+        let accessibilityValue: String
+        if isCollapsed {
+            tooltip = "Pelmet — show hidden icons (⌥⌘B)"
+            accessibilityValue = "Icons hidden"
+        } else if separatorSwallowed {
+            tooltip = "The menu bar is full — Pelmet's divider is hidden by the notch. Right-click for options."
+            accessibilityValue = "Icons shown. The divider is hidden — the menu bar is full."
+        } else if swallowedCount > 0 {
+            tooltip = "\(countPhrase(swallowedCount)) by the notch. Right-click for ways to make room."
+            accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch."
+        } else {
+            tooltip = "Pelmet — hide icons (⌥⌘B)"
+            accessibilityValue = "Icons shown"
+        }
+        button.toolTip = tooltip
+        button.setAccessibilityValue(accessibilityValue)
+    }
+
+    private func countPhrase(_ count: Int) -> String {
+        count == 1
+            ? "1 icon doesn't fit and is hidden"
+            : "\(count) icons don't fit and are hidden"
+    }
+
+    private func separatorImage() -> NSImage? {
+        NSImage(systemSymbolName: "line.diagonal", accessibilityDescription: "Pelmet divider")
+    }
+
+    private func showContextMenu() {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        // Status section — present only when there is something to say
+        // (disabled informational rows, the Wi-Fi-menu pattern).
+        var statusLines: [String] = []
+        if separatorSwallowed {
+            statusLines.append("Pelmet's divider is hidden — the menu bar is full")
+        }
+        if swallowedCount > 0 {
+            let fitPhrase = swallowedCount == 1 ? "1 icon doesn't fit" : "\(swallowedCount) icons don't fit"
+            statusLines.append(
+                isCollapsed
+                    ? "\(fitPhrase) even while collapsed"
+                    : "\(fitPhrase) — hidden by the notch"
+            )
+        }
+        if !statusLines.isEmpty {
+            for line in statusLines {
+                let info = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+                info.isEnabled = false
+                menu.addItem(info)
+            }
+            let hint = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+            hint.isEnabled = false
+            hint.attributedTitle = NSAttributedString(
+                string: "⌘-drag important icons toward the clock,\nor quit unused menu bar apps.",
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+                    .foregroundColor: NSColor.secondaryLabelColor,
+                ]
+            )
+            menu.addItem(hint)
+            menu.addItem(.separator())
+        }
+
+        let toggleTitle = isCollapsed ? "Show Hidden Icons" : "Hide Icons"
+        let toggleEntry = NSMenuItem(title: toggleTitle, action: #selector(menuToggle), keyEquivalent: "b")
+        toggleEntry.keyEquivalentModifierMask = [.command, .option]
+        toggleEntry.target = self
+        menu.addItem(toggleEntry)
+
+        menu.addItem(.separator())
+
+        let resetEntry = NSMenuItem(
+            title: "Reset Divider Position",
+            action: #selector(resetDividerPosition),
+            keyEquivalent: ""
+        )
+        resetEntry.target = self
+        menu.addItem(resetEntry)
+
+        let settingsEntry = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settingsEntry.target = self
+        menu.addItem(settingsEntry)
+
+        menu.addItem(.separator())
+
+        let quitEntry = NSMenuItem(title: "Quit Pelmet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(quitEntry)
+
+        NotchLayoutMonitor.shared.requestMeasurement(reason: .menuOpened)
+
+        // Standard trick: temporarily attach the menu, click, detach —
+        // keeps left-click free for the toggle action.
+        toggleItem.menu = menu
+        toggleItem.button?.performClick(nil)
+        toggleItem.menu = nil
+    }
+
+    @objc private func menuToggle() { toggle() }
+
+    /// Escape hatch for a divider ⌘-dragged somewhere invisible (under the
+    /// notch, or off among icons the user can't find): recreate it in the
+    /// seeded spot next to the toggle.
+    @objc private func resetDividerPosition() {
+        let wasCollapsed = isCollapsed
+        separatorItem = StatusItemRescuer.recreate(
+            separatorItem,
+            autosaveName: separatorAutosaveName,
+            length: wasCollapsed ? collapsedSeparatorLength : expandedSeparatorLength,
+            preferredPosition: 1,
+            configure: { [weak self] item in self?.configureSeparatorButton(item) }
+        )
+        if wasCollapsed {
+            separatorItem.button?.image = nil
+        }
+        NotchLayoutMonitor.shared.reattach(separator: separatorItem, toggle: toggleItem)
     }
 
     // MARK: - Auto-rehide
@@ -129,57 +382,6 @@ final class MenuBarManager: NSObject {
             self?.collapse()
         }
     }
-
-    // MARK: - UI plumbing
-
-    @objc private func toggleButtonClicked(_ sender: NSStatusBarButton) {
-        if NSApp.currentEvent?.type == .rightMouseUp {
-            showContextMenu()
-        } else {
-            toggle()
-        }
-    }
-
-    private func updateToggleIcon() {
-        let symbol = isCollapsed ? "chevron.left" : "chevron.right"
-        toggleItem.button?.image = NSImage(
-            systemSymbolName: symbol,
-            accessibilityDescription: isCollapsed ? "Show hidden items" : "Hide items"
-        )
-    }
-
-    private func separatorImage() -> NSImage? {
-        NSImage(systemSymbolName: "line.diagonal", accessibilityDescription: "Pelmet divider")
-    }
-
-    private func showContextMenu() {
-        let menu = NSMenu()
-
-        let toggleTitle = isCollapsed ? "Show Hidden Items" : "Hide Items"
-        let toggleEntry = NSMenuItem(title: toggleTitle, action: #selector(menuToggle), keyEquivalent: "b")
-        toggleEntry.keyEquivalentModifierMask = [.command, .option]
-        toggleEntry.target = self
-        menu.addItem(toggleEntry)
-
-        menu.addItem(.separator())
-
-        let settingsEntry = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
-        settingsEntry.target = self
-        menu.addItem(settingsEntry)
-
-        menu.addItem(.separator())
-
-        let quitEntry = NSMenuItem(title: "Quit Pelmet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        menu.addItem(quitEntry)
-
-        // Standard trick: temporarily attach the menu, click, detach —
-        // keeps left-click free for the toggle action.
-        toggleItem.menu = menu
-        toggleItem.button?.performClick(nil)
-        toggleItem.menu = nil
-    }
-
-    @objc private func menuToggle() { toggle() }
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()

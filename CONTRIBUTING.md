@@ -12,7 +12,8 @@ deliberately lightweight — no forms, no committees.
 
 ## Dev setup
 
-You need macOS 13+ and Xcode 15+ (Swift 5.9).
+You need a Swift 6 toolchain — Xcode 16+ or recent Command Line Tools (the
+app itself runs on macOS 13+).
 
 ```bash
 git clone https://github.com/ismatBabirli/pelmet.git
@@ -32,17 +33,22 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 ## Map of the code
 
-Everything lives in `Sources/Pelmet/` — about 350 lines total.
+The app lives in `Sources/Pelmet/`; the pure, unit-tested notch/overflow
+geometry lives in `Sources/PelmetCore/`.
 
 | File | What it does |
 |---|---|
 | `main.swift` | AppKit lifecycle entry point |
 | `AppDelegate.swift` | Boot: accessory policy, manager, hotkey |
-| `MenuBarManager.swift` | Core hide/show logic — the expanding-spacer trick |
+| `MenuBarManager.swift` | Core hide/show logic — the expanding-spacer trick, toggle states, menu |
+| `NotchLayoutMonitor.swift` | Event-driven measurement: when to look at the menu bar layout |
+| `WindowListSource.swift` | The only window-server touchpoint (permission-free metadata) |
+| `StatusItemRescuer.swift` | Safe recreate-at-position for Pelmet's own items |
 | `HotkeyManager.swift` | Carbon global hotkey (⌥⌘B), permission-free |
 | `Preferences.swift` | UserDefaults keys shared between AppKit and SwiftUI |
 | `Settings/SettingsView.swift` | SwiftUI settings form |
 | `Settings/SettingsWindowController.swift` | Hosts the settings window from an accessory app |
+| `../PelmetCore/MenuBarLayoutClassifier.swift` | Pure geometry: which icons is macOS hiding at the notch |
 
 Two ground rules:
 
@@ -62,14 +68,32 @@ No linter is configured — just match the surrounding style:
 
 ## Testing
 
-There's no test suite yet — most of the code is AppKit plumbing that's hard to
-unit test. CI checks that every PR compiles. Before sending a PR, please run
-the manual smoke test:
+The notch/overflow classifier in `PelmetCore` has a Swift Testing suite:
+
+```bash
+swift test
+```
+
+On a machine with only Command Line Tools (no Xcode), the Testing framework
+isn't on the default search path — use:
+
+```bash
+FW=/Library/Developer/CommandLineTools/Library/Developer/Frameworks
+LIB=/Library/Developer/CommandLineTools/Library/Developer/usr/lib
+swift test -Xswiftc -F$FW -Xlinker -F$FW \
+  -Xlinker -rpath -Xlinker $FW -Xlinker -rpath -Xlinker $LIB
+```
+
+The AppKit plumbing is still verified manually. Before sending a PR, please
+run the smoke test:
 
 1. `swift run`
 2. Toggle with a click on ‹ / › and with ⌥⌘B
 3. Open Settings (right-click the toggle), flip the options, relaunch, and
    confirm they persisted
+4. On a notched MacBook with a crowded bar: confirm the +N count appears when
+   expanded icons don't fit, and that right-click → Reset Divider Position
+   brings the ╱ divider back next to the chevron
 
-If your change adds genuinely testable logic, a small XCTest target is very
-welcome.
+If your change adds genuinely testable logic, put it in `PelmetCore` with
+tests alongside.
