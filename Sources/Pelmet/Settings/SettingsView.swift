@@ -12,7 +12,7 @@ struct SettingsView: View {
         Form {
             Section {
                 Label {
-                    Text("⌘-drag menu bar icons to the **left** of the ╱ divider. Pelmet will hide and reveal everything on that side.")
+                    Text("Pelmet hides everything to the **left** of the ╱ divider. ⌘-drag icons you want always visible to its **right**, next to the clock.")
                 } icon: {
                     Image(systemName: "hand.draw")
                         .foregroundStyle(.tint)
