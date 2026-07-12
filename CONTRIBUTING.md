@@ -99,6 +99,11 @@ run the smoke test:
 4. On a notched MacBook with a crowded bar: confirm the +N count appears when
    expanded icons don't fit, and that right-click → Reset Divider Position
    brings the ╱ divider back next to the chevron
+5. If you touched the Shelf or the activation engine, run through
+   [docs/shelf-verification.md](docs/shelf-verification.md). The opt-in
+   Accessibility path (one-click activation) must be tested with a **bundled
+   `.app`** — TCC keys the permission to the code signature, so `swift run`
+   grants are unreliable across rebuilds.
 
 If your change adds genuinely testable logic, put it in `PelmetCore` with
 tests alongside.

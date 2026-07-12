@@ -47,7 +47,8 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
     }
 
     /// The first time icons are detected hidden by the notch: explain the
-    /// count once, quietly.
+    /// count once, quietly. New users learn the Shelf here too — no second
+    /// popover for them.
     func maybeShowSwallowedEducation(count: Int, toggle: NSStatusItem) {
         guard activePopover == nil,
               !Preferences.didShowSwallowedEducation,
@@ -55,13 +56,34 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
               count > 0,
               let button = toggle.button else { return }
         Preferences.didShowSwallowedEducation = true
+        Preferences.didShowShelfTip = true
         let phrase = count == 1 ? "1 icon doesn't fit" : "\(count) icons don't fit"
         show(
             title: phrase,
             message: "The notch hides menu bar icons that run out of room — macOS gives no warning. "
                 + "Pelmet shows a count beside its chevron whenever that happens. "
-                + "Right-click the chevron for ways to make room.",
+                + "Click the chevron to open the Shelf and see exactly what's hidden; "
+                + "right-click for ways to make room.",
             buttonTitle: "OK",
+            on: button
+        )
+    }
+
+    /// For users who learned the count BEFORE the Shelf existed: one quiet
+    /// popover the next time something is actually hidden.
+    func maybeShowShelfTip(count: Int, toggle: NSStatusItem) {
+        guard activePopover == nil,
+              Preferences.didShowSwallowedEducation,
+              !Preferences.didShowShelfTip,
+              Preferences.shelfEnabled,
+              count > 0,
+              let button = toggle.button else { return }
+        Preferences.didShowShelfTip = true
+        show(
+            title: "See what's hidden",
+            message: "New: when the chevron shows +\(count), click it to open the Shelf — "
+                + "a panel listing the icons the notch hid. ⌥⌘N works too.",
+            buttonTitle: "Got It",
             on: button
         )
     }
