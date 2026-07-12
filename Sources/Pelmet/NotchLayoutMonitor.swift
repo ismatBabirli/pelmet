@@ -16,6 +16,12 @@ import PelmetCore
 ///
 /// Main-thread only, like the rest of the app: timers and observers are
 /// scheduled on the main run loop.
+extension Notification.Name {
+    /// Posted after every newly confirmed layout classification, alongside
+    /// the single-consumer `onConfirmedChange` closure.
+    static let pelmetLayoutDidChange = Notification.Name("PelmetLayoutDidChange")
+}
+
 final class NotchLayoutMonitor {
 
     static let shared = NotchLayoutMonitor()
@@ -24,6 +30,10 @@ final class NotchLayoutMonitor {
 
     private(set) var confirmed: LayoutClassification?
     var onConfirmedChange: ((LayoutClassification) -> Void)?
+
+    /// Geometry of the most recent measurement (fresh or not) — a fallback
+    /// for consumers that need to position UI when a live read fails.
+    private(set) var lastGeometry: MenuBarGeometry?
 
     // MARK: - Wiring
 
@@ -105,11 +115,12 @@ final class NotchLayoutMonitor {
         }
 
         guard let geometry = currentGeometry() else { return }
-        let rawFrames = WindowListSource.statusItemWindowFrames()
-        guard !rawFrames.isEmpty else { return } // degraded read; keep prior state
+        lastGeometry = geometry
+        let rawWindows = WindowListSource.statusItemWindows()
+        guard !rawWindows.isEmpty else { return } // degraded read; keep prior state
 
         let classification = MenuBarLayoutClassifier.classify(
-            rawItemFrames: rawFrames,
+            rawItems: rawWindows,
             ownSeparatorFrame: separatorItem?.button?.window?.frame,
             ownToggleFrame: toggleItem?.button?.window?.frame,
             isCollapsed: isCollapsed(),
@@ -140,6 +151,10 @@ final class NotchLayoutMonitor {
                 }
                 fflush(stdout)
             }
+            // Multicast first: the activation engine rebuilds its directory
+            // on this, and MenuBarManager's closure below reads that
+            // directory — this order keeps them coherent within one snapshot.
+            NotificationCenter.default.post(name: .pelmetLayoutDidChange, object: self)
             onConfirmedChange?(classification)
         } else {
             // New reading — require one confirming measurement before the UI moves.
@@ -151,7 +166,7 @@ final class NotchLayoutMonitor {
         }
     }
 
-    private func currentGeometry() -> MenuBarGeometry? {
+    func currentGeometry() -> MenuBarGeometry? {
         // Warn only about the notched (built-in) display; on every other
         // display the full bar fits and there is nothing to say. Fall back
         // to the toggle's screen so collapse bookkeeping still works.

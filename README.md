@@ -115,7 +115,8 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 ## Roadmap
 
-- [ ] **Notch panel** — a blurred, rounded panel below the notch that shows hidden icons live and forwards clicks (opt-in Screen Recording)
+- [x] **The Shelf** — a blurred, rounded panel below the notch listing the icons macOS hid, opened by clicking the count (or ⌥⌘N). Rows show each item's app icon and name — **never a screen capture**, so no Screen Recording permission and no purple recording dot.
+- [x] **One-click access** — an *opt-in* Accessibility toggle that opens hidden items with a single click (and identifies them on macOS 26 Tahoe). Off by default; everything else works without it.
 - [ ] Show on hover — reveal when the pointer touches the menu bar
 - [ ] Profiles and per-item rules (e.g. "presentation mode")
 - [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)

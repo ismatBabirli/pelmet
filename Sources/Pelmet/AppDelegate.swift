@@ -19,13 +19,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         MenuBarManager.shared.setUp()
 
-        // Global hotkey: ⌥⌘B toggles hidden items.
+        // Global hotkeys: ⌥⌘B toggles hidden items, ⌥⌘N opens the Shelf.
         HotkeyManager.shared.onToggle = {
             MenuBarManager.shared.toggle()
         }
-        let hotkeyRegistered = HotkeyManager.shared.register()
+        HotkeyManager.shared.onShelf = {
+            MenuBarManager.shared.openShelfFromHotkey()
+        }
+        let registration = HotkeyManager.shared.register()
 
-        printStartupBanner(hotkeyRegistered: hotkeyRegistered)
+        printStartupBanner(hotkeys: registration)
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
@@ -62,12 +65,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// invisible menu-bar app is alive. A bundled .app has no visible stdout,
     /// and os.Logger goes to the unified log, not the terminal, so print is
     /// the right channel for this audience.
-    private func printStartupBanner(hotkeyRegistered: Bool) {
+    private func printStartupBanner(hotkeys: HotkeyManager.Registration) {
         var lines = [
             "Pelmet is running as a menu-bar-only app (no Dock icon, no window).",
             "  Look for the ‹/› chevron toggle next to the clock; the ╱ divider",
             "  sits just left of the chevron.",
-            hotkeyRegistered
+            hotkeys.toggle
                 ? "  • Click the chevron or press ⌥⌘B to hide/show icons."
                 : "  • Click the chevron to hide/show icons. (⌥⌘B is unavailable — another app claimed it.)",
             "  • Pelmet hides everything LEFT of ╱ — ⌘-drag icons you always",
@@ -78,7 +81,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         lines.append(contentsOf: [
             "  • A number next to the chevron (like +3) means that many icons don't fit",
-            "    beside the notch — right-click the chevron for tips.",
+            "    beside the notch — click the chevron to see them on the Shelf"
+                + (hotkeys.shelf ? " (or press ⌥⌘N)." : "."),
             "  • Can't find Pelmet in the bar? Launching it again opens its Settings window.",
             "  • Ctrl-C here (or closing this terminal) quits Pelmet.",
         ])

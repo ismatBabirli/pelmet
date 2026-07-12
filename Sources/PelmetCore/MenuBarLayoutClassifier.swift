@@ -38,13 +38,32 @@ public enum ItemVisibility: Equatable {
     case suspectedGhost
 }
 
+/// A status-item window as the window server reports it: a frame in AppKit
+/// screen coordinates plus the owning process, when known. On macOS 26
+/// (Tahoe) Control Center re-parents third-party items, so the PID there is
+/// Control Center's — consumers must treat that as "owner unknown".
+public struct RawStatusWindow: Equatable {
+    public let frame: CGRect
+    public let ownerPID: Int32?
+
+    public init(frame: CGRect, ownerPID: Int32? = nil) {
+        self.frame = frame
+        self.ownerPID = ownerPID
+    }
+}
+
 public struct ClassifiedItem: Equatable {
     public let frame: CGRect
     public let visibility: ItemVisibility
+    /// Owner PIDs of every window in this item's overlap-cluster, in order
+    /// of appearance: a real item can be backed by both its app's window and
+    /// a Control Center mirror. Empty when the window server reported none.
+    public let ownerPIDs: [Int32]
 
-    public init(frame: CGRect, visibility: ItemVisibility) {
+    public init(frame: CGRect, visibility: ItemVisibility, ownerPIDs: [Int32] = []) {
         self.frame = frame
         self.visibility = visibility
+        self.ownerPIDs = ownerPIDs
     }
 }
 
@@ -120,7 +139,7 @@ public enum MenuBarLayoutClassifier {
     static let frameMatchTolerance: CGFloat = 1.5
 
     public static func classify(
-        rawItemFrames: [CGRect],
+        rawItems: [RawStatusWindow],
         ownSeparatorFrame: CGRect?,
         ownToggleFrame: CGRect?,
         isCollapsed: Bool,
@@ -129,23 +148,25 @@ public enum MenuBarLayoutClassifier {
         let band = geometry.band
         let ownFrames = [ownSeparatorFrame, ownToggleFrame].compactMap { $0 }
 
-        let candidates = rawItemFrames.filter { frame in
-            band.contains(CGPoint(x: frame.midX, y: frame.midY))
+        let candidates = rawItems.filter { window in
+            let frame = window.frame
+            return band.contains(CGPoint(x: frame.midX, y: frame.midY))
                 && frame.width > 4 && frame.width <= maxPlausibleItemWidth
                 && !ownFrames.contains(where: { matches($0, frame) })
         }
 
         let deduped = dedupe(candidates)
 
-        let items = deduped.map { frame in
+        let items = deduped.map { cluster in
             ClassifiedItem(
-                frame: frame,
+                frame: cluster.frame,
                 visibility: visibility(
-                    of: frame,
+                    of: cluster.frame,
                     isCollapsed: isCollapsed,
                     separatorFrame: ownSeparatorFrame,
                     geometry: geometry
-                )
+                ),
+                ownerPIDs: cluster.ownerPIDs
             )
         }
 
@@ -184,6 +205,18 @@ public enum MenuBarLayoutClassifier {
         if isCollapsed, let sep = separatorFrame, frame.maxX <= sep.minX + 2 {
             return .offscreenLeft
         }
+        if let sep = separatorFrame {
+            // A real item can never overlap Pelmet's own separator window —
+            // the bar lays items out side by side. A frame substantially
+            // inside the separator's span is a stale twin parked at an old
+            // layout position (observed after collapse: twins linger at the
+            // previous EXPANDED positions, in-bar, for minutes — the other
+            // ghost zones don't catch those).
+            let overlap = min(sep.maxX, frame.maxX) - max(sep.minX, frame.minX)
+            if overlap > frame.width * overlapDedupeFraction {
+                return .suspectedGhost
+            }
+        }
         if abs(frame.minX - 0) < 0.5 {
             // Exactly x == 0 is the item-birth position — a stale twin left
             // behind when an item was created and immediately moved. Real
@@ -215,21 +248,27 @@ public enum MenuBarLayoutClassifier {
         abs(a.minX - b.minX) <= frameMatchTolerance && abs(a.width - b.width) <= frameMatchTolerance
     }
 
-    /// Cluster frames whose x-ranges substantially overlap and keep one per
-    /// cluster. Adjacent distinct items never overlap; mirrors overlap fully
-    /// and mid-layout ghosts by half or more.
-    static func dedupe(_ frames: [CGRect]) -> [CGRect] {
-        let sorted = frames.sorted { $0.minX < $1.minX }
-        var result: [CGRect] = []
-        for frame in sorted {
+    /// Cluster windows whose x-ranges substantially overlap and keep one
+    /// frame per cluster, merging the cluster's owner PIDs (a real item can
+    /// be backed by its app's window plus a Control Center mirror). Adjacent
+    /// distinct items never overlap; mirrors overlap fully and mid-layout
+    /// ghosts by half or more.
+    static func dedupe(_ windows: [RawStatusWindow]) -> [(frame: CGRect, ownerPIDs: [Int32])] {
+        let sorted = windows.sorted { $0.frame.minX < $1.frame.minX }
+        var result: [(frame: CGRect, ownerPIDs: [Int32])] = []
+        for window in sorted {
+            let frame = window.frame
             if let last = result.last {
-                let overlap = min(last.maxX, frame.maxX) - max(last.minX, frame.minX)
-                let narrower = min(last.width, frame.width)
+                let overlap = min(last.frame.maxX, frame.maxX) - max(last.frame.minX, frame.minX)
+                let narrower = min(last.frame.width, frame.width)
                 if overlap > narrower * overlapDedupeFraction {
+                    if let pid = window.ownerPID, !last.ownerPIDs.contains(pid) {
+                        result[result.count - 1].ownerPIDs.append(pid)
+                    }
                     continue
                 }
             }
-            result.append(frame)
+            result.append((frame: frame, ownerPIDs: window.ownerPID.map { [$0] } ?? []))
         }
         return result
     }

@@ -68,11 +68,44 @@ Pelmet occupies a deliberate position in that landscape:
 
 *Goal: the beautiful, actionable answer to the notch.*
 
-- A **floating frosted panel** that slides out below the notch (or below the toggle on external displays), rendering the hidden icons live via **ScreenCaptureKit**
-- **Click forwarding** with CGEvent: click an icon in the Shelf, its real menu opens
-- Opt-in Screen Recording permission with a plain-language explanation screen; the app remains fully functional without it (falls back to Phase 0 behavior)
-- Configurable trigger: click, hover, hotkey, or notch-tap
-- Appearance options: blur material, rounded corners, light/dark, reduce-transparency support
+A **floating frosted panel** below the notch listing exactly the icons macOS
+hid, opened by clicking the "+N" count (or ⌥⌘N). Two tiers, degrading
+gracefully:
+
+- **Tier 0 — permission-free.** Rows render as the owning app's icon + name
+  (via `NSRunningApplication`), never captured pixels. On macOS ≤ 15 owners
+  come free from `CGWindowListCopyWindowInfo`; on macOS 26 Tahoe — where
+  Control Center re-parents every status-item window — rows honestly show as
+  "Hidden item N" until the user opts into Tier 1. Clicking a row brings the
+  owning app forward and offers the opt-in.
+- **Tier 1 — opt-in Accessibility.** One toggle enables reading which app
+  owns each item (restoring identity on Tahoe) and **single-click activation**
+  of the real item via synthetic events, with a make-room/drag-to-expose
+  fallback for items in the notch dead zone. Plain-language consent; never
+  reads the screen; fully degradable — turn it off and Tier 0 keeps working.
+
+> **Why not ScreenCaptureKit?** The original spec captured live item pixels.
+> Verified dead end (mid-2026): Screen Recording brings recurring
+> re-approval prompts and a permanent purple indicator, the capture APIs are
+> obsoleted (the maintained Ice fork resorts to a private, leaking SkyLight
+> call), and it contradicts Pelmet's permission-free positioning. An
+> **Accessibility-first** design (proven by MenuDown, ChocolateBar) is the
+> trust-preserving answer.
+
+- Interaction: always-visible "+N" indicator → click-to-open (hover is a
+  later opt-in accelerator, never the only path); single-click activation;
+  never auto-reorders the main bar; real buttons for VoiceOver + keyboard nav.
+- Appearance: `NSVisualEffectView` blur, rounded corners, respects Reduce
+  Transparency / Reduce Motion. Enabled on the notched built-in display.
+
+> **macOS 27 "Golden Gate" (ships ~Sept 2026)** adds a native overflow button
+> and merges all status items into a single window, breaking the expanding-
+> spacer mechanic and per-item detection every manager relies on. Pelmet's
+> engine already degrades to a frames-only honest state via a runtime
+> re-parenting heuristic (the same tripwire that handles Tahoe); a dedicated
+> macOS 27 compatibility pass is its own follow-up. The Shelf's audience
+> until then is the large Sequoia/Tahoe installed base, which gets nothing
+> native.
 
 ### ⚡ Phase 3 — Actionable Power Features
 
@@ -97,6 +130,7 @@ Pelmet occupies a deliberate position in that landscape:
 ## 5. Non-Goals
 
 - **No menu bar "styling"** (tints, borders) in early phases — Ice does this well; we stay focused
+- **No Screen Recording, ever** — the Shelf renders app icons/names, not captured pixels; the purple indicator and re-approval nags are exactly what users flee
 - **No Mac App Store initially** — the sandbox is incompatible with the Shelf; direct + Homebrew distribution instead
 - **No analytics, no accounts, no network calls** except Sparkle update checks
 
@@ -105,10 +139,11 @@ Pelmet occupies a deliberate position in that landscape:
 | Area | Choice |
 |---|---|
 | Language / UI | Swift 5.9+, SwiftUI for windows, AppKit for menu bar machinery |
-| Minimum macOS | 13 Ventura (phases 0–1); Shelf may require 14 for ScreenCaptureKit APIs |
+| Minimum macOS | 13 Ventura (all phases) |
 | Hide mechanism | `NSStatusItem` expanding spacer (no private APIs) |
-| Shelf rendering | ScreenCaptureKit capture of the hidden menu bar region |
-| Click forwarding | CGEvent synthesis at real item coordinates |
+| Shelf rendering | App icon + name from `NSRunningApplication` (no screen capture) |
+| Item identity | `CGWindowListCopyWindowInfo` owner PID (≤ Sequoia); `kAXExtrasMenuBarAttribute` sweep (Tahoe, opt-in Accessibility) |
+| Click forwarding | Synthetic `CGEvent` at real item coordinates + drag-to-expose fallback (opt-in Accessibility) |
 | Hotkeys | Carbon `RegisterEventHotKey` (permission-free) |
 | Updates | Sparkle 2 |
 | CI/CD | GitHub Actions: build → sign → notarize → release |

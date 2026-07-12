@@ -54,6 +54,10 @@ final class MenuBarManager: NSObject {
     private var toggleRescueAttempts = 0
     private var lastToggleRescue = Date.distantPast
 
+    /// The Shelf's seam to the opt-in activation machinery. Always present;
+    /// degrades honestly when the Accessibility grant is absent.
+    var shelfEngine: StatusItemActivating { StatusItemActivationEngine.shared }
+
     // MARK: - Setup
 
     func setUp() {
@@ -118,6 +122,14 @@ final class MenuBarManager: NSObject {
             collapse()
         } else {
             expand(scheduleRehide: false)
+        }
+
+        StatusItemActivationEngine.shared.start()
+        // The engine's directory changes on its own schedule (grant lands,
+        // AX sweep enriches identity) — independent of the layout digest, so
+        // re-derive Shelf rows when it does.
+        shelfEngine.onDirectoryChange = { [weak self] _ in
+            self?.refreshShelfEntries()
         }
 
         NotchLayoutMonitor.shared.requestMeasurement(reason: .launch)
@@ -187,6 +199,8 @@ final class MenuBarManager: NSObject {
     }
 
     func collapse() {
+        // A Shelf left open over a collapsing bar would show stale rows.
+        ShelfPanelController.shared.hide(animated: false)
         isCollapsed = true
         Preferences.isCollapsed = true
         rehideTimer?.invalidate()
@@ -209,7 +223,8 @@ final class MenuBarManager: NSObject {
         separatorSwallowed = !isCollapsed && classification.separatorHealth == .swallowed
         updateToggleIcon()
 
-        LayoutStatus.shared.refresh(swallowedCount: swallowedCount)
+        refreshShelfEntries()
+
         if isCollapsed, classification.offscreenLeftCount > 0, !Preferences.hasEverManagedItems {
             Preferences.hasEverManagedItems = true
         }
@@ -219,6 +234,30 @@ final class MenuBarManager: NSObject {
         }
 
         reapplyOnboardingChecks()
+    }
+
+    /// Re-derives Shelf rows from the latest confirmed layout and the
+    /// engine's current directory, then pushes them to SwiftUI and any open
+    /// panel. Called both on a new layout snapshot AND when the engine's
+    /// directory changes (e.g. the Accessibility grant lands and the AX
+    /// sweep enriches identity) — the layout digest doesn't move on a grant,
+    /// so without this second trigger an open Shelf would stay stale.
+    func refreshShelfEntries() {
+        // Prefer the monitor's confirmed snapshot: on a fresh layout the
+        // engine's directory-change fires (via the multicast) before apply()
+        // updates our own `latestClassification`, so reading the monitor
+        // avoids deriving against a one-snapshot-stale classification.
+        guard let classification = NotchLayoutMonitor.shared.confirmed ?? latestClassification else { return }
+        let pids = Set(classification.items.flatMap(\.ownerPIDs))
+        let entries = ShelfContentDeriver.derive(
+            classification: classification,
+            apps: OwnerResolver.shared.resolve(pids: pids),
+            controlCenterPID: OwnerResolver.shared.controlCenterPID(),
+            ownPID: Int32(ProcessInfo.processInfo.processIdentifier),
+            engineItems: shelfEngine.activatableDescriptors
+        )
+        LayoutStatus.shared.refresh(swallowedCount: classification.swallowedCount, shelfEntries: entries)
+        ShelfPanelController.shared.update(entries: entries)
     }
 
     /// Runs the pending one-time tips against the latest confirmed layout.
@@ -232,6 +271,10 @@ final class MenuBarManager: NSObject {
             separatorVisible: classification.separatorHealth == .visible
         )
         OnboardingController.shared.maybeShowSwallowedEducation(
+            count: classification.swallowedCount,
+            toggle: toggleItem
+        )
+        OnboardingController.shared.maybeShowShelfTip(
             count: classification.swallowedCount,
             toggle: toggleItem
         )
@@ -263,12 +306,68 @@ final class MenuBarManager: NSObject {
 
     // MARK: - UI plumbing
 
+    /// Left-click matrix. The behavior differs from plain toggle ONLY when
+    /// the "+N" badge is visibly present — the button looks different in
+    /// exactly the states where it acts differently:
+    ///
+    ///   shelf open                              → close the Shelf
+    ///   collapsed                               → expand (unchanged)
+    ///   expanded, nothing swallowed             → collapse (unchanged)
+    ///   expanded, +N showing, shelf enabled     → open the Shelf
+    ///   expanded, +N showing, shelf disabled    → collapse (pre-Shelf behavior)
+    ///
+    /// ⌥⌘B always means plain toggle; right-click always means the menu.
     @objc private func toggleButtonClicked(_ sender: NSStatusBarButton) {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showContextMenu()
-        } else {
-            toggle()
+            return
         }
+        if ShelfPanelController.shared.isVisible {
+            ShelfPanelController.shared.hide()
+            return
+        }
+        // Only diverge to "open Shelf" when the "+N" badge is actually
+        // visible — same condition updateToggleIcon() draws it under. If the
+        // user hid the count, the chevron looks like the plain toggle and
+        // must act like it.
+        if !isCollapsed, swallowedCount > 0,
+           Preferences.showSwallowedCount, Preferences.shelfEnabled {
+            openShelf(reason: .toggleClick)
+            return
+        }
+        toggle()
+    }
+
+    // MARK: - Shelf
+
+    func openShelfFromHotkey() {
+        if ShelfPanelController.shared.isVisible {
+            ShelfPanelController.shared.hide()
+        } else {
+            openShelf(reason: .hotkey)
+        }
+    }
+
+    @objc private func openShelfFromMenu() {
+        openShelf(reason: .menu)
+    }
+
+    private func openShelf(reason: ShelfPanelController.ShowReason) {
+        ShelfPanelController.shared.show(anchor: toggleItem.button, reason: reason)
+    }
+
+    /// The activation engine calls this when a target is one of Pelmet's
+    /// own collapse-hidden items: reveal the bar so it becomes clickable.
+    func expandForActivation() {
+        guard isCollapsed else { return }
+        expand(scheduleRehide: false)
+    }
+
+    /// Pelmet's own status-item window frames — excluded from activation
+    /// targets and drag neighbors.
+    var ownItemFrames: [CGRect] {
+        [separatorItem?.button?.window?.frame, toggleItem?.button?.window?.frame]
+            .compactMap { $0 }
     }
 
     /// State is conveyed by the chevron glyph and a plain-text count ONLY —
@@ -303,8 +402,15 @@ final class MenuBarManager: NSObject {
             tooltip = "The menu bar is full — Pelmet's divider is hidden by the notch. Right-click for options."
             accessibilityValue = "Icons shown. The divider is hidden — the menu bar is full."
         } else if swallowedCount > 0 {
-            tooltip = "\(countPhrase(swallowedCount)) by the notch. Right-click for ways to make room."
-            accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch."
+            // "Click to see them" only when a click actually opens the Shelf
+            // — i.e. the badge is visible (showCount) and the Shelf is on.
+            if showCount && Preferences.shelfEnabled {
+                tooltip = "\(countPhrase(swallowedCount)) by the notch. Click to see them; right-click for options."
+                accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch. Click to open the Shelf."
+            } else {
+                tooltip = "\(countPhrase(swallowedCount)) by the notch. Right-click for ways to make room."
+                accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch."
+            }
         } else {
             tooltip = "Pelmet — hide icons (⌥⌘B)"
             accessibilityValue = "Icons shown"
@@ -357,6 +463,19 @@ final class MenuBarManager: NSObject {
                 ]
             )
             menu.addItem(hint)
+
+            if swallowedCount > 0 {
+                // Always offered while something is hidden — the menu is the
+                // path that works even with the click-to-open pref off.
+                let shelfEntry = NSMenuItem(
+                    title: "See What's Hidden…",
+                    action: #selector(openShelfFromMenu),
+                    keyEquivalent: "n"
+                )
+                shelfEntry.keyEquivalentModifierMask = [.command, .option]
+                shelfEntry.target = self
+                menu.addItem(shelfEntry)
+            }
 
             let makeRoomEntry = NSMenuItem(
                 title: "Make Room…",

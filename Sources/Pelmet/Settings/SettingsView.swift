@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import ServiceManagement
 
@@ -6,7 +7,10 @@ struct SettingsView: View {
     @AppStorage(Preferences.Keys.autoRehide) private var autoRehide = true
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
     @AppStorage(Preferences.Keys.showSwallowedCount) private var showSwallowedCount = true
+    @AppStorage(Preferences.Keys.shelfEnabled) private var shelfEnabled = true
+    @AppStorage(Preferences.Keys.activationEngineEnabled) private var activationEngineEnabled = false
     @ObservedObject private var status = LayoutStatus.shared
+    @ObservedObject private var activation = ActivationStatus.shared
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
 
@@ -44,6 +48,17 @@ struct SettingsView: View {
                         value: status.swallowedCount == 0 ? "None right now" : "\(status.swallowedCount)"
                     )
                     Toggle("Show a count on the chevron when icons don't fit", isOn: $showSwallowedCount)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Open the Shelf when clicking the count", isOn: $shelfEnabled)
+                        Text("The Shelf is a panel under the notch listing the icons macOS hid. "
+                            + "Turned off, a click always hides/shows icons instead — the Shelf stays "
+                            + "one right-click (or ⌥⌘N) away.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     LabeledContent("Icon spacing", value: status.spacingProfile.label)
                     HStack {
                         Button("Make Room…") {
@@ -54,6 +69,43 @@ struct SettingsView: View {
                                 MenuBarSpacing.apply(.systemDefault)
                                 status.refreshSpacing()
                             }
+                        }
+                    }
+                }
+
+                Section("One-Click Access") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Open hidden icons with one click", isOn: Binding(
+                            get: { activationEngineEnabled },
+                            set: { enabled in
+                                MenuBarManager.shared.shelfEngine.setEnabled(enabled)
+                                if enabled { MenuBarManager.shared.shelfEngine.requestAccess() }
+                            }
+                        ))
+                        Text("Pelmet will read which app owns each menu bar icon and simulate "
+                            + "clicks to open them. It never reads your screen. Turn this off any "
+                            + "time; everything else keeps working.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if activationEngineEnabled {
+                        switch activation.availability {
+                        case .granted:
+                            LabeledContent("Accessibility permission", value: "Granted")
+                        case .denied:
+                            VStack(alignment: .leading, spacing: 4) {
+                                LabeledContent("Accessibility permission", value: "Not granted")
+                                Text("Grant it in System Settings → Privacy & Security → Accessibility.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Button("Open System Settings…") {
+                                    openAccessibilitySettings()
+                                }
+                            }
+                        case .notDetermined:
+                            LabeledContent("Accessibility permission", value: "Waiting for approval…")
                         }
                     }
                 }
@@ -87,6 +139,7 @@ struct SettingsView: View {
                 }
 
                 LabeledContent("Toggle shortcut", value: "⌥⌘B")
+                LabeledContent("Shelf shortcut", value: "⌥⌘N")
 
                 Button("Show Welcome Tips Again") {
                     OnboardingController.shared.replayTips()
@@ -96,6 +149,11 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 420)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func openAccessibilitySettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(url)
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {
