@@ -1,4 +1,8 @@
 "$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
 
+# Seed each new workspace with its own copy of the root repo's codegraph index
+# so it starts warm instead of doing a full re-index. codegraph is a live,
+# self-updating index (per-checkout daemon + file watcher), so each workspace
+# must own its db rather than share one — .backup makes a consistent snapshot.
 [scripts]
-setup = '[ -f "$CONDUCTOR_ROOT_PATH/.codegraph/codegraph.db" ] && mkdir -p .codegraph && ln -sfn "$CONDUCTOR_ROOT_PATH/.codegraph/codegraph.db" .codegraph/codegraph.db || true'
+setup = '[ -f "$CONDUCTOR_ROOT_PATH/.codegraph/codegraph.db" ] && mkdir -p .codegraph && sqlite3 "$CONDUCTOR_ROOT_PATH/.codegraph/codegraph.db" ".backup .codegraph/codegraph.db" || true'
