@@ -7,13 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
-- Onboarding tips could appear detached from the menu bar (floating
-  mid-screen, seen on macOS 26). Tips now validate their anchor before
-  showing, self-correct their position, close cleanly when Pelmet rebuilds
-  its status items, and no longer burn their once-only flag when showing
-  fails.
+- **Sparkle auto-updates** — Pelmet now checks for new versions in-app via
+  [Sparkle 2](https://sparkle-project.org). A "Check for Updates…" item sits in
+  the chevron's right-click menu and the General settings pane gains a "Software
+  Update" section. Updates are EdDSA-signed and delivered over an appcast served
+  from GitHub Pages; the download stays a notarized `.zip` on GitHub Releases. On
+  first launch Sparkle asks once whether to check automatically — nothing hits
+  the network until you opt in.
 
 ### Changed
 
@@ -21,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with **General**, **Menu Bar Space**, and **One-Click Access** panes — a
   much shorter window with the same options — and it now remembers the
   last-selected pane.
+
+### Fixed
+
+- Onboarding tips could appear detached from the menu bar (floating
+  mid-screen, seen on macOS 26). Tips now validate their anchor before
+  showing, self-correct their position, close cleanly when Pelmet rebuilds
+  its status items, and no longer burn their once-only flag when showing
+  fails.
 
 ## [0.1.0] - 2026-07-13
 

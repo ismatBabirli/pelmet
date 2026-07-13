@@ -139,7 +139,7 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 - [ ] Profiles and per-item rules (e.g. "presentation mode")
 - [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
 - [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`
-- [ ] Sparkle auto-updates
+- [x] **Sparkle auto-updates** — in-app update checks (Sparkle 2), EdDSA-signed, with an appcast on GitHub Pages; "Check for Updates…" in the menu and a Software Update toggle in Settings
 
 The full vision and phased plan live in [PROJECT.md](PROJECT.md); release history
 is in [CHANGELOG.md](CHANGELOG.md).

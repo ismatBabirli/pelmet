@@ -4,6 +4,15 @@ options:
   deploymentTarget:
     macOS: "13.0"
 
+# Sparkle powers in-app auto-updates. It's embedded in the .app bundle by this
+# XcodeGen build only — NOT in Package.swift — so `swift run` and the tests stay
+# Sparkle-free. The updater code is guarded by `#if canImport(Sparkle)` and only
+# works from a signed bundle, so leaving it out of the SPM build is intentional.
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
+
 targets:
   # Pure geometry/classification, mirrored from Package.swift so
   # `import PelmetCore` resolves in the Xcode build too.
@@ -22,6 +31,7 @@ targets:
     platform: macOS
     dependencies:
       - target: PelmetCore
+      - package: Sparkle
     sources:
       - Sources/Pelmet
       - Resources/Assets.xcassets
@@ -36,6 +46,15 @@ targets:
         # Menu-bar-only app: no Dock icon, no app switcher entry.
         LSUIElement: true
         NSHumanReadableCopyright: "MIT License"
+        # Sparkle auto-updates. The feed lives on GitHub Pages; update .zips are
+        # served from GitHub Releases (see the enclosure URLs in appcast.xml).
+        SUFeedURL: "https://ismatbabirli.github.io/pelmet/appcast.xml"
+        # EdDSA (ed25519) public key that verifies every downloaded update.
+        # Its private half lives only in the SPARKLE_ED_PRIVATE_KEY CI secret
+        # and the login Keychain. See docs/RELEASING.md → "Sparkle auto-updates".
+        SUPublicEDKey: "PNXQ+qmeChvGLPr2kXxFLXC6U9mwjbQTlJo5RHA3eSU="
+        # SUEnableAutomaticChecks is intentionally unset: Sparkle asks the user
+        # once on first launch whether to check automatically (trust-first).
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ismatbabirli.Pelmet

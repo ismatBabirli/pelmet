@@ -10,6 +10,7 @@ struct GeneralPaneView: View {
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
+    @State private var autoCheckUpdates = UpdaterController.shared.automaticallyChecksForUpdates
 
     var body: some View {
         Form {
@@ -47,6 +48,24 @@ struct GeneralPaneView: View {
             Section("Shortcuts") {
                 LabeledContent("Toggle shortcut", value: "⌥⌘B")
                 LabeledContent("Shelf shortcut", value: "⌥⌘N")
+            }
+
+            // Sparkle owns the "check automatically" preference (its own
+            // defaults, no Preferences key). Hidden under `swift run`, where
+            // Sparkle is absent and the updater can't run without a bundle.
+            if UpdaterController.shared.isAvailable {
+                Section("Software Update") {
+                    Toggle("Automatically check for updates", isOn: Binding(
+                        get: { autoCheckUpdates },
+                        set: { enabled in
+                            autoCheckUpdates = enabled
+                            UpdaterController.shared.automaticallyChecksForUpdates = enabled
+                        }
+                    ))
+                    Button("Check for Updates…") {
+                        UpdaterController.shared.checkForUpdates(nil)
+                    }
+                }
             }
 
             Section {

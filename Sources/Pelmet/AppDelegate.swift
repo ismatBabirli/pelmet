@@ -19,6 +19,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         MenuBarManager.shared.setUp()
 
+        // Start Sparkle (bundled .app only). Sparkle asks the user once on
+        // first launch whether to check automatically; nothing hits the network
+        // until they opt in. Inert under `swift run` (no bundle, no Sparkle).
+        _ = UpdaterController.shared
+
         // Global hotkeys: ⌥⌘B toggles hidden items, ⌥⌘N opens the Shelf.
         HotkeyManager.shared.onToggle = {
             MenuBarManager.shared.toggle()

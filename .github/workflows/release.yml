@@ -181,6 +181,95 @@ jobs:
             dist/Pelmet-$VERSION.zip \
             dist/checksums.txt
 
+      # ---- Sparkle: EdDSA-sign the .zip and publish the appcast on gh-pages ----
+      # The signed enclosure points at the GitHub Release .zip uploaded above.
+      # The feed (SUFeedURL in project.yml) is served by GitHub Pages from the
+      # gh-pages branch. Skips cleanly until the signing key secret exists.
+      - name: Publish Sparkle appcast
+        if: env.DRY_RUN != 'true'
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          SPARKLE_VERSION: "2.6.4"
+          VERSION: ${{ steps.v.outputs.version }}
+          BUILD: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
+            echo "SPARKLE_ED_PRIVATE_KEY not set — skipping appcast publish."
+            echo "Add the secret (see docs/RELEASING.md) to enable auto-updates."
+            exit 0
+          fi
+
+          # Fetch sign_update. Its version is independent of the SPM-resolved
+          # framework (which floats within 2.x) — any 2.x sign_update is
+          # compatible with the EdDSA signature format.
+          curl -fsSL -o "$RUNNER_TEMP/sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          tar -xf "$RUNNER_TEMP/sparkle.tar.xz" -C "$RUNNER_TEMP" bin/sign_update
+
+          # Sign the notarized .zip. Output is: sparkle:edSignature="…" length="…"
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$RUNNER_TEMP/ed_key"
+          SIG_AND_LEN="$("$RUNNER_TEMP/bin/sign_update" "dist/Pelmet-$VERSION.zip" --ed-key-file "$RUNNER_TEMP/ed_key")"
+          rm -f "$RUNNER_TEMP/ed_key"
+          echo "Signed: $SIG_AND_LEN"
+
+          # Clone the Pages branch, creating an orphan one the first time.
+          if git clone --branch gh-pages --single-branch \
+               "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" pages 2>/dev/null; then
+            cd pages
+          else
+            git clone "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" pages
+            cd pages
+            git checkout --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+
+          ENCLOSURE_URL="https://github.com/${REPO}/releases/download/v${VERSION}/Pelmet-${VERSION}.zip"
+          PUBDATE="$(date -u '+%a, %d %b %Y %H:%M:%S +0000')"
+
+          # Seed an empty feed the first time. XML ignores indentation, so the
+          # heredoc body needn't be column-aligned.
+          if [ ! -f appcast.xml ]; then
+            cat > appcast.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>Pelmet</title>
+              <link>https://ismatbabirli.github.io/pelmet/appcast.xml</link>
+              <description>Pelmet updates</description>
+              <language>en</language>
+            </channel>
+          </rss>
+          EOF
+          fi
+
+          # Build the new <item>. $SIG_AND_LEN already holds
+          # sparkle:edSignature="…" length="…".
+          cat > "$RUNNER_TEMP/item.xml" <<EOF
+              <item>
+                <title>$VERSION</title>
+                <pubDate>$PUBDATE</pubDate>
+                <sparkle:version>$BUILD</sparkle:version>
+                <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                <enclosure url="$ENCLOSURE_URL" $SIG_AND_LEN type="application/octet-stream"/>
+              </item>
+          EOF
+
+          # Append the item before the closing </channel>. Order is irrelevant —
+          # Sparkle picks the update by sparkle:version, not feed position.
+          awk -v itemfile="$RUNNER_TEMP/item.xml" '
+            /<\/channel>/ && !done { while ((getline line < itemfile) > 0) print line; done=1 }
+            { print }
+          ' appcast.xml > appcast.new && mv appcast.new appcast.xml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "appcast: Pelmet $VERSION" || echo "nothing to commit"
+          git push origin gh-pages
+
       # ---- Keep the Homebrew tap's cask in sync with this release ----
       - name: Bump Homebrew cask
         if: env.DRY_RUN != 'true'
