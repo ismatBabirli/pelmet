@@ -75,13 +75,16 @@ struct TipPlacementTests {
         // External display arranged left of the primary: negative X origin.
         let extScreen = CGRect(x: -2560, y: 120, width: 2560, height: 1440)
         let extAnchor = CGRect(x: -80, y: extScreen.maxY - 24, width: 30, height: 24)
-        let popover = frame(x: -400, y: extScreen.minY + 100)
+        // Far from the anchor both ways: spans -1000…-660, so it does not
+        // cover the anchor's midX (-65) and X must be recentered.
+        let popover = frame(x: -1000, y: extScreen.minY + 100)
         let corrected = TipPlacement.correctedFrame(
             popoverFrame: popover, anchorRect: extAnchor, screenFrame: extScreen
         )
         #expect(corrected?.maxY == extAnchor.minY)
-        // Anchor sits near the external screen's right edge (x = -65):
-        // recentering would cross into the primary; clamp inside extScreen.
+        // Recentering on midX (-65) would cross into the primary display;
+        // clamp inside the external screen's right margin instead.
         #expect(corrected?.maxX == extScreen.maxX - 8)
+        #expect(corrected.map { $0.minX >= extScreen.minX + 8 } == true)
     }
 }
