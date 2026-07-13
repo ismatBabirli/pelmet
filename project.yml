@@ -47,3 +47,11 @@ targets:
         # App Sandbox intentionally OFF for now; distribute outside
         # the Mac App Store (GitHub Releases + Homebrew cask).
         ENABLE_APP_SANDBOX: false
+        # Empty hardened-runtime entitlements (see the file's comment).
+        CODE_SIGN_ENTITLEMENTS: Sources/Pelmet/Pelmet.entitlements
+        # Ad-hoc by default so anyone can `xcodegen generate` and build
+        # locally with no certificate. The release workflow re-signs the
+        # built .app with a real "Developer ID Application" identity before
+        # notarizing — see .github/workflows/release.yml.
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"

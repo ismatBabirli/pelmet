@@ -107,3 +107,10 @@ run the smoke test:
 
 If your change adds genuinely testable logic, put it in `PelmetCore` with
 tests alongside.
+
+## Releasing (maintainers)
+
+Releases are cut by pushing a `vX.Y.Z` tag — GitHub Actions builds, signs,
+notarizes, and publishes the `.dmg`, then bumps the Homebrew cask. The full
+runbook (certificates, secrets, one-time setup) is in
+[docs/RELEASING.md](docs/RELEASING.md).
