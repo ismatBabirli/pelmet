@@ -7,8 +7,10 @@ Releases are automated. Pushing a `vX.Y.Z` tag triggers
 2. code-signs it with your **Developer ID Application** identity (hardened runtime),
 3. **notarizes** the app and the DMG with Apple and staples the tickets,
 4. packages `Pelmet-<version>.dmg` + `Pelmet-<version>.zip`,
-5. creates the GitHub Release with generated notes + checksums, and
-6. bumps the cask in the `ismatBabirli/homebrew-pelmet` tap.
+5. creates the GitHub Release with generated notes + checksums,
+6. EdDSA-signs the `.zip` and appends an item to the Sparkle **appcast** on the
+   `gh-pages` branch (served by GitHub Pages), and
+7. bumps the cask in the `ismatBabirli/homebrew-pelmet` tap.
 
 The **git tag is the source of truth** for the released version — the workflow
 patches `project.yml`'s `CFBundleShortVersionString` from it, so you don't edit
@@ -42,7 +44,33 @@ Development / Apple Distribution certs, but neither can notarize — only a
 Create a **fine-grained PAT** (<https://github.com/settings/tokens>) with
 **Contents: Read and write** scoped to `ismatBabirli/homebrew-pelmet`.
 
-### 4. Add the GitHub secrets
+### 4. Sparkle EdDSA signing key (for auto-updates)
+
+Sparkle verifies every downloaded update with an **EdDSA (ed25519)** signature.
+Generate the key pair once with Sparkle's `generate_keys` tool (it ships in the
+Sparkle release under `bin/` — download `Sparkle-<ver>.tar.xz` from
+<https://github.com/sparkle-project/Sparkle/releases>):
+
+```bash
+./bin/generate_keys                     # stores the PRIVATE key in your login Keychain,
+                                        # prints the PUBLIC key (a base64 string)
+```
+
+1. Paste the printed **public** key into `project.yml` →
+   `targets.Pelmet.info.properties.SUPublicEDKey`, replacing the placeholder.
+2. Export the **private** key for CI and store it as a secret, then delete it:
+
+   ```bash
+   ./bin/generate_keys -x sparkle_private_key    # writes the private key to a file
+   gh secret set SPARKLE_ED_PRIVATE_KEY --repo ismatBabirli/pelmet < sparkle_private_key
+   rm -f sparkle_private_key
+   ```
+
+The private key lives **only** in the Keychain and the GitHub secret — never in
+the repo. Losing it means you must ship a new public key in an update before you
+can sign again, so back up the Keychain item.
+
+### 5. Add the GitHub secrets
 
 Run from the repo (macOS `base64` shown):
 
@@ -54,6 +82,7 @@ base64 -i AuthKey_XXXXXXXXXX.p8      | gh secret set NOTARY_KEY_P8_BASE64       
 echo -n 'XXXXXXXXXX'                 | gh secret set NOTARY_KEY_ID                --repo "$R"
 echo -n 'YOUR-ISSUER-UUID'           | gh secret set NOTARY_ISSUER_ID            --repo "$R"
 echo -n 'ghp_yourTapToken'           | gh secret set HOMEBREW_TAP_TOKEN          --repo "$R"
+# SPARKLE_ED_PRIVATE_KEY is set in step 4 above.
 ```
 
 | Secret | What |
@@ -64,8 +93,9 @@ echo -n 'ghp_yourTapToken'           | gh secret set HOMEBREW_TAP_TOKEN         
 | `NOTARY_KEY_ID` | the API key ID |
 | `NOTARY_ISSUER_ID` | the API issuer UUID |
 | `HOMEBREW_TAP_TOKEN` | PAT with write access to the tap repo |
+| `SPARKLE_ED_PRIVATE_KEY` | Sparkle EdDSA private key (from step 4) |
 
-### 5. Bootstrap the Homebrew tap (once)
+### 6. Bootstrap the Homebrew tap (once)
 
 ```bash
 ./scripts/bootstrap-tap.sh
@@ -73,6 +103,36 @@ echo -n 'ghp_yourTapToken'           | gh secret set HOMEBREW_TAP_TOKEN         
 
 Creates `ismatBabirli/homebrew-pelmet` and seeds `Casks/pelmet.rb`. The release
 workflow keeps its `version`/`sha256` current from then on.
+
+### 7. Enable GitHub Pages for the Sparkle appcast (once)
+
+The appcast feed (`SUFeedURL` in `project.yml`,
+`https://ismatbabirli.github.io/pelmet/appcast.xml`) is served from a dedicated
+`gh-pages` branch:
+
+```bash
+# From a fresh clone, seed an empty feed on an orphan branch:
+git checkout --orphan gh-pages
+git rm -rf . >/dev/null 2>&1 || true
+cat > appcast.xml <<'EOF'
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Pelmet</title>
+    <link>https://ismatbabirli.github.io/pelmet/appcast.xml</link>
+    <description>Pelmet updates</description>
+    <language>en</language>
+  </channel>
+</rss>
+EOF
+git add appcast.xml && git commit -m "Seed Sparkle appcast" && git push -u origin gh-pages
+git checkout main
+```
+
+Then in the repo's **Settings → Pages**, set **Source: Deploy from a branch →
+`gh-pages` / (root)**. Each release appends a signed `<item>` and pushes it here.
+(If you skip this seed, the release workflow creates the orphan branch itself the
+first time — but you still must flip on Pages.)
 
 ---
 

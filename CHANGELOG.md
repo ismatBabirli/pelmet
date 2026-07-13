@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Sparkle auto-updates** — Pelmet now checks for new versions in-app via
+  [Sparkle 2](https://sparkle-project.org). A "Check for Updates…" item sits in
+  the chevron's right-click menu and Settings gains a "Software Update" section.
+  Updates are EdDSA-signed and delivered over an appcast served from GitHub
+  Pages; the download stays a notarized `.zip` on GitHub Releases. On first
+  launch Sparkle asks once whether to check automatically — nothing hits the
+  network until you opt in.
 
 ## [0.1.0] - 2026-07-13
 

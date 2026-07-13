@@ -544,6 +544,17 @@ final class MenuBarManager: NSObject {
             menu.addItem(oneClickEntry)
         }
 
+        // Sparkle: only in the bundled .app (compiled out under `swift run`).
+        if UpdaterController.shared.isAvailable {
+            let updatesEntry = NSMenuItem(
+                title: "Check for Updates…",
+                action: #selector(checkForUpdates),
+                keyEquivalent: ""
+            )
+            updatesEntry.target = self
+            menu.addItem(updatesEntry)
+        }
+
         let settingsEntry = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsEntry.target = self
         menu.addItem(settingsEntry)
@@ -598,6 +609,10 @@ final class MenuBarManager: NSObject {
         ) { [weak self] _ in
             self?.collapse()
         }
+    }
+
+    @objc private func checkForUpdates() {
+        UpdaterController.shared.checkForUpdates(nil)
     }
 
     @objc private func openSettings() {

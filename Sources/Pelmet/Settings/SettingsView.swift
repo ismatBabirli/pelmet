@@ -13,6 +13,7 @@ struct SettingsView: View {
     @ObservedObject private var activation = ActivationStatus.shared
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
+    @State private var autoCheckUpdates = UpdaterController.shared.automaticallyChecksForUpdates
 
     var body: some View {
         Form {
@@ -143,6 +144,24 @@ struct SettingsView: View {
 
                 Button("Show Welcome Tips Again") {
                     OnboardingController.shared.replayTips()
+                }
+            }
+
+            // Sparkle owns the "check automatically" preference (its own
+            // defaults, no Preferences key). Hidden under `swift run`, where
+            // Sparkle is absent and the updater can't run without a bundle.
+            if UpdaterController.shared.isAvailable {
+                Section("Software Update") {
+                    Toggle("Automatically check for updates", isOn: Binding(
+                        get: { autoCheckUpdates },
+                        set: { enabled in
+                            autoCheckUpdates = enabled
+                            UpdaterController.shared.automaticallyChecksForUpdates = enabled
+                        }
+                    ))
+                    Button("Check for Updates…") {
+                        UpdaterController.shared.checkForUpdates(nil)
+                    }
                 }
             }
         }
