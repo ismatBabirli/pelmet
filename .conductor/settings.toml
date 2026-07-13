@@ -1,0 +1,4 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = '[ -f "$CONDUCTOR_ROOT_PATH/.codegraph/codegraph.db" ] && mkdir -p .codegraph && ln -sfn "$CONDUCTOR_ROOT_PATH/.codegraph/codegraph.db" .codegraph/codegraph.db || true'
