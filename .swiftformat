@@ -1,0 +1,19 @@
+# Pelmet house style. Deliberately conservative: an explicit --rules allowlist
+# of hygiene-only rules that the current tree already satisfies, so running
+# `swiftformat .` is a no-op on existing code and only catches regressions
+# (trailing whitespace, missing final newline, stray double blank lines, etc.).
+#
+# Intentionally NOT enforced, because they are the established house style:
+#   - blankLinesAtStartOfScope (a blank line after `{` is used deliberately)
+#   - sortImports              (imports are grouped by hand, not alphabetised)
+#   - consecutiveSpaces        (some declarations are aligned on purpose)
+# Indentation intent (4 spaces) is covered by .editorconfig.
+#
+# Run `swiftformat .` before a PR. See CONTRIBUTING.md.
+
+--swiftversion 6
+--indent 4
+
+--rules trailingSpace,consecutiveBlankLines,blankLinesAtEndOfScope,linebreakAtEndOfFile,redundantParens,duplicateImports
+
+--exclude .build,Sources/Pelmet/Info.plist
