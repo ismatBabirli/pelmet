@@ -15,6 +15,9 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
+<img src="Resources/pelmet-shelf.png" width="450"
+     alt="Pelmet showing +4 beside its chevron and a frosted Shelf listing Screen Studio, ChatGPT, Docker Desktop, and Wispr Flow as four menu bar items hidden by the MacBook notch.">
+
 </div>
 
 > [!NOTE]
