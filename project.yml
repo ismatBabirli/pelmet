@@ -50,11 +50,9 @@ targets:
         # served from GitHub Releases (see the enclosure URLs in appcast.xml).
         SUFeedURL: "https://ismatbabirli.github.io/pelmet/appcast.xml"
         # EdDSA (ed25519) public key that verifies every downloaded update.
-        # PLACEHOLDER — replace with the real key printed by Sparkle's
-        # `generate_keys` before cutting the first Sparkle release. The matching
-        # private key lives only in the SPARKLE_ED_PRIVATE_KEY CI secret.
-        # See docs/RELEASING.md → "Sparkle auto-updates".
-        SUPublicEDKey: "REPLACE_WITH_generate_keys_PUBLIC_KEY"
+        # Its private half lives only in the SPARKLE_ED_PRIVATE_KEY CI secret
+        # and the login Keychain. See docs/RELEASING.md → "Sparkle auto-updates".
+        SUPublicEDKey: "PNXQ+qmeChvGLPr2kXxFLXC6U9mwjbQTlJo5RHA3eSU="
         # SUEnableAutomaticChecks is intentionally unset: Sparkle asks the user
         # once on first launch whether to check automatically (trust-first).
     settings:
