@@ -15,8 +15,6 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-<!-- TODO(screenshot): add a short GIF of collapse/expand here once recorded, e.g. docs/demo.gif -->
-
 </div>
 
 > [!NOTE]
