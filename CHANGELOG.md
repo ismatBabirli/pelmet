@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Onboarding tips could appear detached from the menu bar (floating
+  mid-screen, seen on macOS 26). Tips now validate their anchor before
+  showing, self-correct their position, close cleanly when Pelmet rebuilds
+  its status items, and no longer burn their once-only flag when showing
+  fails.
+
 ### Changed
 
 - The Settings window is reorganized into a System Settings-style sidebar
