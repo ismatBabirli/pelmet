@@ -34,6 +34,23 @@ final class ActivationExecutor {
     private var activeEngine: StatusItemActivationEngine?
     private var activeCompletion: ((ActivationResult) -> Void)?
     private var activeGeometry: MenuBarGeometry?
+    /// Menu-level window IDs present when the session began, BEFORE any
+    /// click — the shared reference for verification, the session's menu
+    /// gate, and post-finish quiescence.
+    private var sessionBaseline: Set<Int> = []
+    /// Restore drag owed after the session (a neighbor was moved to make
+    /// room) — discharged only once the user is quiescent.
+    private var owedRestoreDrag: DragPlan?
+    /// True from a finish that may have left a menu in the user's hands
+    /// until quiescence releases. Blocks the next activation ONLY while
+    /// real obligations are owed (restore drag, focus give-back) — an
+    /// obligation-free hold just guards auto-rehide and yields to the next
+    /// activation instead of failing it `.busy`.
+    private var quiescing = false
+    /// Bumped whenever quiescence starts or is cancelled — stale poll
+    /// closures and drag completions check it and bail, so a cancelled
+    /// hold can't double-release the rehide surface.
+    private var quiescenceGeneration = 0
     /// Frontmost app before appMenuClearance activated Finder — restored
     /// when the session finishes so activation never steals focus for good.
     private var previousFrontmost: NSRunningApplication?
@@ -63,6 +80,16 @@ final class ActivationExecutor {
         guard !isDisabledByEnv else { return completion(.failed(.permissionDenied)) }
         guard engine.canActivate else { return completion(.failed(.permissionDenied)) }
         guard !isActivating else { return completion(.failed(.busy)) }
+        if quiescing {
+            // A pending restore drag or focus give-back would collide with
+            // a new session — honest `.busy` until they discharge. A hold
+            // with nothing owed only pauses auto-rehide; the new activation
+            // takes that duty over, so cancel it and proceed.
+            guard owedRestoreDrag == nil, previousFrontmost == nil else {
+                return completion(.failed(.busy))
+            }
+            cancelQuiescence()
+        }
         guard Date().timeIntervalSince(lastActivation) >= Self.minActivationInterval else {
             return completion(.failed(.busy))
         }
@@ -96,10 +123,10 @@ final class ActivationExecutor {
         isActivating = true
         aborted = false
         lastActivation = Date()
-        lastOpenedMenuID = nil
         activeGeometry = geometry
         previousFrontmost = nil
         preDragRightOfNotchFrames = nil
+        owedRestoreDrag = nil
         installAbortObservers()
 
         session = ActivationSession(
@@ -109,6 +136,9 @@ final class ActivationExecutor {
         activeTarget = target
         activeEngine = engine
         activeCompletion = completion
+        // Captured BEFORE any click (the detector's documented contract):
+        // anything at the menu level beyond this set was opened by us.
+        sessionBaseline = detector.baselineWindowIDs()
         dispatch(session!.handle(.begin))
     }
 
@@ -131,9 +161,23 @@ final class ActivationExecutor {
                 }
                 return // async; the callback re-enters via advance()
 
-            case .startVerification(let deadline):
-                startVerification(near: pendingVerificationPoint, deadline: deadline) { [weak self] event in
+            case .startVerification(let deadline, let persistence):
+                startVerification(
+                    near: pendingVerificationPoint, deadline: deadline, persistence: persistence
+                ) { [weak self] event in
                     self?.advance(event)
+                }
+                return
+
+            case .checkMenuOpen:
+                // The session gate: did anything open since the baseline?
+                let open = detector.newMenuWindowID(
+                    near: pendingVerificationPoint, baseline: sessionBaseline
+                ) != nil
+                // Async hop — the callback re-enters via advance(), same as
+                // the other effect callbacks.
+                DispatchQueue.main.async { [weak self] in
+                    self?.advance(.menuCheck(open: open))
                 }
                 return
 
@@ -141,7 +185,9 @@ final class ActivationExecutor {
                 poster.releaseMouseButtons()
 
             case .restoreDrag(let plan):
-                scheduleRestore(plan)
+                // Discharged by the post-finish quiescence loop, never here —
+                // the menu the session opened is likely still in use.
+                owedRestoreDrag = plan
 
             case .finish(let result):
                 finish(result)
@@ -253,15 +299,31 @@ final class ActivationExecutor {
     private func startVerification(
         near point: CGPoint,
         deadline: TimeInterval,
+        persistence: TimeInterval?,
         report: @escaping (ActivationSession.Event) -> Void
     ) {
-        let baseline = detector.baselineWindowIDs()
+        // The session baseline predates the click, so a menu that opened
+        // faster than the first poll is still detected.
+        let baseline = sessionBaseline
         let start = Date()
         func poll() {
             if aborted { return report(.aborted(.interrupted)) }
             if let id = detector.newMenuWindowID(near: point, baseline: baseline) {
-                lastOpenedMenuID = id
-                return report(.verified(.menuOpened))
+                guard let persistence else { return report(.verified(.menuOpened)) }
+                // Ghost-menu rule: an AXPress "menu" that collapses within
+                // ~1.1s doesn't count — the window must survive the interval.
+                DispatchQueue.main.asyncAfter(deadline: .now() + persistence) { [weak self] in
+                    guard let self else { return }
+                    if self.aborted { return report(.aborted(.interrupted)) }
+                    if self.detector.isWindowPresent(id) {
+                        return report(.verified(.menuOpened))
+                    }
+                    if Date().timeIntervalSince(start) >= deadline {
+                        return report(.verificationTimedOut)
+                    }
+                    poll()
+                }
+                return
             }
             if Date().timeIntervalSince(start) >= deadline {
                 return report(.verificationTimedOut)
@@ -271,8 +333,6 @@ final class ActivationExecutor {
         // Give the click a beat to open the menu before the first poll.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { poll() }
     }
-
-    private var lastOpenedMenuID: Int?
 
     /// The reflow moved the target; find where it landed. Runs on `ioQueue`.
     ///
@@ -315,43 +375,119 @@ final class ActivationExecutor {
         return nil
     }
 
-    private func scheduleRestore(_ plan: DragPlan) {
-        // Restore only after the opened menu closes, so we don't yank the
-        // bar out from under an open menu. Bounded wait.
-        let menuID = lastOpenedMenuID
-        let deadline = Date().addingTimeInterval(30)
-        func waitAndRestore() {
-            let menuClosed = menuID.map { !detector.isWindowPresent($0) } ?? true
-            if menuClosed || Date() > deadline {
-                guard NSEvent.pressedMouseButtons == 0 else {
-                    // User is interacting; don't fight them. Leave the order
-                    // as-is rather than risk a tug of war.
-                    return
-                }
-                let restorePoint = CGPoint(x: plan.neighborFrame.midX, y: plan.neighborFrame.midY)
-                poster.commandDrag(fromAppKit: plan.to, toAppKit: restorePoint)
-                return
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { waitAndRestore() }
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { waitAndRestore() }
-    }
-
     private func finish(_ result: ActivationResult) {
         isActivating = false
         removeAbortObservers()
         StatusItemActivationEngine.debugTrace { "activation finished: \(result)" }
-        // Clearance borrowed focus for Finder; give it back.
-        if let previousFrontmost, !previousFrontmost.isTerminated {
-            previousFrontmost.activate(options: [])
-        }
-        previousFrontmost = nil
         let completion = activeCompletion
         session = nil
         activeTarget = nil
         activeEngine = nil
         activeCompletion = nil
+
+        // A success means a menu may be in the user's hands right now; a
+        // moved neighbor or Finder's borrowed focus are obligations that
+        // must wait for the user to be done either way.
+        let activated: Bool
+        if case .activated = result { activated = true } else { activated = false }
+        if activated || owedRestoreDrag != nil || previousFrontmost != nil {
+            // Hold the auto-rehide open BEFORE the completion hides the
+            // Shelf — openSurfaces must never touch zero (arming the
+            // collapse timer) while the user may be in the menu.
+            UIActivityTracker.shared.surfaceOpened()
+            beginQuiescence()
+        }
         completion?(result)
+    }
+
+    // MARK: - Post-finish quiescence
+
+    /// One mechanism for everything owed after a session: wait until no
+    /// menu beyond the session baseline is open AND the user is idle, then
+    /// restore the dragged neighbor, give Finder's borrowed focus back, and
+    /// release the auto-rehide hold. `QuiescencePolicy` holds the rules.
+    private func beginQuiescence() {
+        quiescing = true
+        quiescenceGeneration += 1
+        let generation = quiescenceGeneration
+        let baseline = sessionBaseline
+        let start = Date()
+        var closedStreak = 0
+        func poll() {
+            guard generation == quiescenceGeneration else { return }
+            let menusOpen = detector.hasNewMenuWindows(baseline: baseline)
+            closedStreak = menusOpen ? 0 : closedStreak + 1
+            let decision = QuiescencePolicy.decide(
+                menusOpen: menusOpen,
+                closedStreak: closedStreak,
+                buttonsDown: NSEvent.pressedMouseButtons != 0,
+                secondsSinceLastInput: Self.secondsSinceLastUserInput(),
+                elapsed: Date().timeIntervalSince(start)
+            )
+            switch decision {
+            case .wait:
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { poll() }
+            case .proceed:
+                endQuiescence(discharge: true, generation: generation)
+            case .giveUp:
+                // Never drag or refocus under a still-open menu — leave the
+                // bar as the user sees it and only release the rehide hold.
+                endQuiescence(discharge: false, generation: generation)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { poll() }
+    }
+
+    /// A hold with nothing owed, yielding to a fresh activation (which
+    /// re-opens its own rehide hold at finish).
+    private func cancelQuiescence() {
+        quiescenceGeneration += 1
+        quiescing = false
+        UIActivityTracker.shared.surfaceClosed()
+    }
+
+    private func endQuiescence(discharge: Bool, generation: Int) {
+        let plan = discharge ? owedRestoreDrag : nil
+        let refocus = discharge ? previousFrontmost : nil
+        if !discharge {
+            owedRestoreDrag = nil
+            previousFrontmost = nil
+        }
+        // On discharge the obligations stay set until the drag lands, so a
+        // new activate() keeps answering `.busy` instead of interleaving
+        // synthetic events with the in-flight restore.
+        let giveFocusBackAndRelease = { [weak self] in
+            guard let self, generation == self.quiescenceGeneration else { return }
+            // Give Finder's borrowed focus back — unless the user's menu
+            // choice already moved focus somewhere else; don't fight that.
+            if let refocus, !refocus.isTerminated,
+               NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.finder" {
+                refocus.activate(options: [])
+            }
+            self.owedRestoreDrag = nil
+            self.previousFrontmost = nil
+            self.quiescing = false
+            UIActivityTracker.shared.surfaceClosed()
+        }
+        guard let plan else { return giveFocusBackAndRelease() }
+        lastDrag = Date()
+        let restorePoint = CGPoint(x: plan.neighborFrame.midX, y: plan.neighborFrame.midY)
+        ioQueue.async { [weak self] in
+            self?.poster.commandDrag(fromAppKit: plan.to, toAppKit: restorePoint)
+            DispatchQueue.main.async(execute: giveFocusBackAndRelease)
+        }
+    }
+
+    /// Seconds since the user last clicked or released the mouse —
+    /// permission-free, session-wide (synthetic events count too, but none
+    /// are posted while quiescence runs).
+    private static func secondsSinceLastUserInput() -> TimeInterval {
+        let types: [CGEventType] = [.leftMouseDown, .leftMouseUp, .rightMouseDown]
+        return types
+            .map {
+                CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0)
+            }
+            .min() ?? .greatestFiniteMagnitude
     }
 
     // MARK: - Abort rails

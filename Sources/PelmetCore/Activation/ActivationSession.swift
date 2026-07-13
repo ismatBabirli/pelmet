@@ -10,7 +10,12 @@ import Foundation
 ///  - strategies run in planner order; each click-ish step gets one
 ///    verification window (0.7s clicks, 1.2s AXPress — an AXPress "menu"
 ///    that collapses before ~1.1s is the known ghost-menu failure, so its
-///    verification uses persistence, which the executor implements);
+///    verification requires the window to persist, which the executor
+///    implements);
+///  - once ANY click was posted, a menu may already be open even though
+///    verification missed it (detection is heuristic); every later step
+///    is gated on a menu check, and an open menu finishes the session
+///    successfully — never perform another step over the user's menu;
 ///  - exactly ONE retry total: the first strategy re-runs once after all
 ///    strategies exhaust, and only if no drag was performed;
 ///  - the drag path never retries; a failed drag ends the session;
@@ -31,14 +36,22 @@ public struct ActivationSession {
         case stepFailed
         case verified(ActivationVerification)
         case verificationTimedOut
+        /// Result of `Effect.checkMenuOpen`.
+        case menuCheck(open: Bool)
         case aborted(ActivationFailure)
     }
 
     public enum Effect: Equatable {
         case perform(ActivationStrategy)
         /// Start polling for a newly opened menu window; feed back
-        /// `.verified` or `.verificationTimedOut`.
-        case startVerification(deadline: TimeInterval)
+        /// `.verified` or `.verificationTimedOut`. A non-nil `persistence`
+        /// means a match only counts if the window is still present that
+        /// much later (the AXPress ghost-menu rule).
+        case startVerification(deadline: TimeInterval, persistence: TimeInterval?)
+        /// One detector scan against the session baseline near the last
+        /// click: did a menu open since the session began? Feed back
+        /// `.menuCheck(open:)`.
+        case checkMenuOpen
         /// Post a balanced mouse-up if any synthetic button might be down.
         case releaseMouseButtons
         /// After the session finishes and the opened menu closes: drag the
@@ -49,6 +62,9 @@ public struct ActivationSession {
 
     public static let clickVerification: TimeInterval = 0.7
     public static let axPressVerification: TimeInterval = 1.2
+    /// An AXPress "menu" that collapses before ~1.1s is the known
+    /// ghost-menu failure — a match must survive this long to count.
+    public static let axPressMenuPersistence: TimeInterval = 1.1
 
     private let strategies: [ActivationStrategy]
     private let targetWasSwallowed: Bool
@@ -57,6 +73,9 @@ public struct ActivationSession {
     /// True while the single first-strategy retry is in flight — the chain
     /// does NOT continue past it.
     private var retrying = false
+    /// True between emitting `.checkMenuOpen` and receiving `.menuCheck` —
+    /// any other `.menuCheck` is spurious and ignored.
+    private var awaitingMenuGate = false
     private var dragPerformed: DragPlan?
     private var reflowClickHappened = false
     private var anyClickPosted = false
@@ -80,13 +99,16 @@ public struct ActivationSession {
             switch current {
             case .syntheticClick:
                 anyClickPosted = true
-                return [.startVerification(deadline: Self.clickVerification)]
+                return [.startVerification(deadline: Self.clickVerification, persistence: nil)]
             case .clickTargetAfterReflow:
                 anyClickPosted = true
                 reflowClickHappened = true
-                return [.startVerification(deadline: Self.clickVerification)]
+                return [.startVerification(deadline: Self.clickVerification, persistence: nil)]
             case .axPress:
-                return [.startVerification(deadline: Self.axPressVerification)]
+                return [.startVerification(
+                    deadline: Self.axPressVerification,
+                    persistence: Self.axPressMenuPersistence
+                )]
             case .appMenuClearance, .expandCollapsedBar:
                 return advance()
             case .dragToExpose(let plan):
@@ -111,6 +133,15 @@ public struct ActivationSession {
         case .verificationTimedOut:
             return advance()
 
+        case .menuCheck(let open):
+            guard awaitingMenuGate else { return [] }
+            awaitingMenuGate = false
+            // An open menu is the success we were after — finishing here is
+            // what keeps every remaining step from closing it under the user.
+            if open { return finish(.activated(.menuOpened)) }
+            guard let step = current else { return advance() }
+            return [.perform(step)]
+
         case .aborted(let failure):
             var effects: [Effect] = [.releaseMouseButtons]
             effects.append(contentsOf: finish(.failed(failure)))
@@ -129,7 +160,7 @@ public struct ActivationSession {
         if !retrying {
             index += 1
             if let next = current {
-                return [.perform(next)]
+                return gatedPerform(next)
             }
             // Exhausted. One retry of the FIRST strategy only, unless the
             // bar was already rearranged by a drag.
@@ -137,13 +168,22 @@ public struct ActivationSession {
                case .syntheticClick = first {
                 didRetry = true
                 retrying = true
-                return [.perform(first)]
+                return gatedPerform(first)
             }
         }
         if anyClickPosted, reflowClickHappened || !targetWasSwallowed {
             return finish(.activated(.unverified))
         }
         return finish(.failed(targetWasSwallowed ? .noRoomToExpose : .timedOut))
+    }
+
+    /// A posted click may have opened a menu the verification window missed
+    /// — check before performing anything else over it. Before the first
+    /// click nothing could be open, so perform directly.
+    private mutating func gatedPerform(_ step: ActivationStrategy) -> [Effect] {
+        guard anyClickPosted else { return [.perform(step)] }
+        awaitingMenuGate = true
+        return [.checkMenuOpen]
     }
 
     private mutating func finish(_ result: ActivationResult) -> [Effect] {

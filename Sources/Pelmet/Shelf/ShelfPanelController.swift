@@ -180,11 +180,14 @@ final class ShelfPanelController {
         // toggle's mouseUp handler reopen the shelf it just closed.
         globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(
             matching: [.leftMouseDown, .rightMouseDown]
-        ) { [weak self] _ in
+        ) { [weak self] event in
             guard let self else { return }
-            // Our own Tier-1 activation posts a synthetic click into another
-            // app; a global monitor sees it. Never treat that as a dismiss.
+            // Our own synthetic events (activation clicks, the post-session
+            // restore drag) land in other apps and a global monitor sees
+            // them. Never treat those as a dismiss — they carry the poster's
+            // source tag, and mid-activation nothing dismisses at all.
             if ActivationExecutor.shared.isActivating { return }
+            if Self.isPelmetSynthetic(event) { return }
             if let toggleWindow = self.anchorButton?.window,
                toggleWindow.frame.contains(NSEvent.mouseLocation) { return }
             self.hide()
@@ -194,6 +197,7 @@ final class ShelfPanelController {
         ) { [weak self] event in
             guard let self else { return event }
             if ActivationExecutor.shared.isActivating { return event }
+            if Self.isPelmetSynthetic(event) { return event }
             if event.window !== self.panelIfLoaded {
                 if let toggleWindow = self.anchorButton?.window, event.window === toggleWindow {
                     return event
@@ -217,6 +221,12 @@ final class ShelfPanelController {
                 self?.hide(animated: false)
             }),
         ]
+    }
+
+    /// Events posted by `SyntheticEventPoster` carry its source tag.
+    private static func isPelmetSynthetic(_ event: NSEvent) -> Bool {
+        event.cgEvent?.getIntegerValueField(.eventSourceUserData)
+            == SyntheticEventPoster.sourceUserData
     }
 
     private func removeDismissMonitors() {

@@ -45,6 +45,14 @@ final class MenuOpenDetector {
         menuWindows().contains { $0.id == id }
     }
 
+    /// Any menu-level window beyond `baseline` — the user may be browsing a
+    /// menu we opened, or a submenu that replaced its window. Robust to that
+    /// churn, unlike single-ID tracking; deliberately X-agnostic, since
+    /// submenus extend far from the item.
+    func hasNewMenuWindows(baseline: Set<Int>) -> Bool {
+        menuWindows().contains { !baseline.contains($0.id) }
+    }
+
     // MARK: - Window snapshot
 
     private struct MenuWindow {
