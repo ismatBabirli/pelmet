@@ -24,7 +24,9 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-git clone "https://github.com/$OWNER/$TAP.git" "$tmp"
+# Authenticate the push via gh's token (plain https push can't read a username
+# in a non-interactive shell).
+git clone "https://x-access-token:$(gh auth token)@github.com/$OWNER/$TAP.git" "$tmp"
 
 mkdir -p "$tmp/Casks"
 cp "$CASK_SRC" "$tmp/Casks/pelmet.rb"
@@ -46,7 +48,7 @@ if git diff --cached --quiet; then
   echo "Tap already up to date."
 else
   git commit -m "Seed pelmet cask"
-  git push
+  git push origin HEAD:main
 fi
 
 echo "Done. Install with: brew install --cask $OWNER/pelmet/pelmet"
