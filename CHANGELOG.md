@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **About settings pane**: a new About pane shows Pelmet's version and build,
+  a button to copy the version for bug reports, and links to the GitHub repo,
+  release notes, and issue tracker, alongside the MIT license. The chevron's
+  right-click menu also shows the current version. A plain `swift run` dev
+  build (which has no bundle) reads "Development build".
+
 ## [0.2.0] - 2026-07-13
 
 ### Added
