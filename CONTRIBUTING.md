@@ -51,7 +51,9 @@ geometry lives in `Sources/PelmetCore/`.
 | `UIActivityTracker.swift` | Pauses auto-rehide while Pelmet UI is open |
 | `HotkeyManager.swift` | Carbon global hotkey (⌥⌘B), permission-free |
 | `Preferences.swift` | UserDefaults keys shared between AppKit and SwiftUI |
-| `Settings/SettingsView.swift` | SwiftUI settings form |
+| `Settings/SettingsRootView.swift` | System Settings-style sidebar + detail layout |
+| `Settings/SettingsPane.swift` | Pane descriptors: titles, icons, notch-gated availability |
+| `Settings/*PaneView.swift` | The panes: General, Menu Bar Space, One-Click Access |
 | `Settings/SettingsWindowController.swift` | Hosts the settings window from an accessory app |
 | `../PelmetCore/MenuBarLayoutClassifier.swift` | Pure geometry: which icons is macOS hiding at the notch |
 

@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Changed
+
+- The Settings window is reorganized into a System Settings-style sidebar
+  with **General**, **Menu Bar Space**, and **One-Click Access** panes — a
+  much shorter window with the same options — and it now remembers the
+  last-selected pane.
 
 ## [0.1.0] - 2026-07-13
 

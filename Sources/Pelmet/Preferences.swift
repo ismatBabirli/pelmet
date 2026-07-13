@@ -2,7 +2,7 @@ import Foundation
 
 /// Simple UserDefaults-backed preferences.
 /// Kept as static accessors so both AppKit (MenuBarManager)
-/// and SwiftUI (@AppStorage in SettingsView) read the same keys.
+/// and SwiftUI (@AppStorage in the Settings panes) read the same keys.
 enum Preferences {
 
     enum Keys {
@@ -21,6 +21,7 @@ enum Preferences {
         static let didOfferOneClick = "didOfferOneClick"
         static let didAutoPromptAccessibility = "didAutoPromptAccessibility"
         static let awaitingOneClickGrant = "awaitingOneClickGrant"
+        static let settingsPane = "settingsPane"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -59,6 +60,14 @@ enum Preferences {
     static var activationEngineEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: Keys.activationEngineEnabled) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.activationEngineEnabled) }
+    }
+
+    /// Last-selected Settings pane (`SettingsPane.rawValue`); General when
+    /// unset or no longer available (e.g. a stale One-Click Access selection
+    /// on a non-notched Mac).
+    static var settingsPane: String {
+        get { UserDefaults.standard.string(forKey: Keys.settingsPane) ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.settingsPane) }
     }
 
     /// Whether the system Accessibility prompt was ever triggered — needed to
