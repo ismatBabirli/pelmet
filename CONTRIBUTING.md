@@ -66,7 +66,10 @@ Two ground rules:
 
 ## Code style
 
-No linter is configured — just match the surrounding style:
+A [`.swiftformat`](.swiftformat) config encodes the house style — run
+`swiftformat .` before opening a PR (`brew install swiftformat` if you don't
+have it). It's a conservative rule set tuned to endorse the existing style
+rather than churn it, so the diff should be small. In short:
 
 - 4-space indentation, `// MARK: -` section headers
 - `///` doc comments on types; inline comments explain *why*, especially around

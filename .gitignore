@@ -20,3 +20,13 @@ xcuserdata/
 
 # Local agent/tooling scratch space
 .context/
+
+# Signing & notarization secrets — never commit (see docs/RELEASING.md)
+*.p8
+*.p12
+*.pem
+*.cer
+*.mobileprovision
+AuthKey_*.p8
+Certificates*.p12
+DeveloperID*.p12
