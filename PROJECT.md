@@ -138,7 +138,7 @@ gracefully:
 
 | Area | Choice |
 |---|---|
-| Language / UI | Swift 5.9+, SwiftUI for windows, AppKit for menu bar machinery |
+| Language / UI | Swift 6 toolchain (Swift 5 language mode), SwiftUI for windows, AppKit for menu bar machinery |
 | Minimum macOS | 13 Ventura (all phases) |
 | Hide mechanism | `NSStatusItem` expanding spacer (no private APIs) |
 | Shelf rendering | App icon + name from `NSRunningApplication` (no screen capture) |

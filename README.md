@@ -9,9 +9,8 @@
 *A pelmet is the board above a window that hides the curtain fittings.
 This one hides your menu bar clutter, so nothing disappears behind the MacBook notch.*
 
-<!-- Restore once CI is re-enabled (see .github/workflows/ci.yml.disabled):
 [![CI](https://img.shields.io/github/actions/workflow/status/ismatBabirli/pelmet/ci.yml?branch=main&label=CI)](https://github.com/ismatBabirli/pelmet/actions/workflows/ci.yml)
--->
+[![Release](https://img.shields.io/github/v/release/ismatBabirli/pelmet?label=release&sort=semver)](https://github.com/ismatBabirli/pelmet/releases/latest)
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black?logo=apple)
 ![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -69,9 +68,30 @@ Pelmet places two items in your menu bar:
 | Settings (auto-rehide, launch at login) | Right-click the toggle → Settings… |
 | Quit | Right-click the toggle → Quit Pelmet |
 
+## Install
+
+### Homebrew (recommended)
+
+```bash
+brew install --cask ismatBabirli/pelmet/pelmet
+```
+
+This taps `ismatBabirli/homebrew-pelmet` and installs the signed, notarized app
+into `/Applications`. Upgrade later with `brew upgrade --cask pelmet`.
+
+### Direct download
+
+Download the latest `Pelmet-<version>.dmg` from the
+[Releases page](https://github.com/ismatBabirli/pelmet/releases/latest), open it,
+and drag **Pelmet** to Applications. Builds are signed and notarized by Apple, so
+they launch with no Gatekeeper warning.
+
+Pelmet is menu-bar-only — after launching, look **next to the clock**, not in the
+Dock.
+
 ## Building from source
 
-There are no packaged releases yet — building takes under a minute.
+Prefer to build it yourself? It takes under a minute.
 
 ```bash
 git clone https://github.com/ismatBabirli/pelmet.git
@@ -120,9 +140,11 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 - [ ] Show on hover — reveal when the pointer touches the menu bar
 - [ ] Profiles and per-item rules (e.g. "presentation mode")
 - [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
-- [ ] Notarized releases, Homebrew cask, Sparkle updates
+- [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`
+- [ ] Sparkle auto-updates
 
-The full vision and phased plan live in [PROJECT.md](PROJECT.md).
+The full vision and phased plan live in [PROJECT.md](PROJECT.md); release history
+is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Prior art
 
