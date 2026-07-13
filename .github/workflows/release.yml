@@ -1,0 +1,204 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (no leading v), e.g. 0.1.0"
+        required: true
+        default: "0.0.0"
+      dry_run:
+        description: "Build only — skip signing, notarizing, and publishing"
+        type: boolean
+        default: true
+
+# Needed to create the GitHub Release and upload assets.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      # 'true' skips every step that needs Apple/GitHub secrets, so a
+      # workflow_dispatch run can prove the build works before secrets exist.
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building version $VERSION (dry_run=$DRY_RUN)"
+
+      - name: Pin version into project.yml
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          BUILD: ${{ github.run_number }}
+        run: |
+          sed -i '' "s/CFBundleShortVersionString: \"[^\"]*\"/CFBundleShortVersionString: \"$VERSION\"/" project.yml
+          sed -i '' "s/CFBundleVersion: \"[^\"]*\"/CFBundleVersion: \"$BUILD\"/" project.yml
+          grep -E "CFBundle(ShortVersionString|Version)" project.yml
+
+      - name: Install packaging tools
+        run: brew install xcodegen create-dmg
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build Release (unsigned)
+        run: |
+          xcodebuild build \
+            -project Pelmet.xcodeproj \
+            -scheme Pelmet \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+          echo "APP=$PWD/build/Build/Products/Release/Pelmet.app" >> "$GITHUB_ENV"
+
+      # ---- Dry run stops here: publish the unsigned .app for inspection ----
+      - name: Upload unsigned app (dry run)
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pelmet-unsigned-${{ steps.v.outputs.version }}
+          path: build/Build/Products/Release/Pelmet.app
+
+      # ---- Import the Developer ID Application certificate ----
+      - name: Import signing certificate
+        if: env.DRY_RUN != 'true'
+        env:
+          CERT_P12_BASE64: ${{ secrets.DEVELOPER_ID_CERT_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KC_PASS="$(openssl rand -base64 24)"
+          echo "$CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KC_PASS" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_PASS" "$KEYCHAIN"
+          CERT_ID="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | grep 'Developer ID Application' | head -1 | awk '{print $2}')"
+          if [ -z "$CERT_ID" ]; then echo "No Developer ID Application identity found"; exit 1; fi
+          echo "CERT_ID=$CERT_ID" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Codesign (hardened runtime)
+        if: env.DRY_RUN != 'true'
+        run: |
+          codesign --force --deep --options runtime --timestamp \
+            --entitlements Sources/Pelmet/Pelmet.entitlements \
+            --sign "$CERT_ID" "$APP"
+          codesign --verify --strict --verbose=2 "$APP"
+
+      - name: Notarize the app
+        if: env.DRY_RUN != 'true'
+        env:
+          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          echo "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/Pelmet-notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/Pelmet-notarize.zip" \
+            --key "$RUNNER_TEMP/AuthKey.p8" \
+            --key-id "$NOTARY_KEY_ID" \
+            --issuer "$NOTARY_ISSUER_ID" \
+            --wait
+          xcrun stapler staple "$APP"
+
+      - name: Package DMG + ZIP
+        if: env.DRY_RUN != 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          mkdir -p dist stage
+          cp -R "$APP" stage/
+          # ZIP of the stapled app (Sparkle-ready + a lightweight download).
+          ditto -c -k --keepParent "$APP" "dist/Pelmet-$VERSION.zip"
+          # DMG with an Applications drop-link.
+          create-dmg \
+            --volname "Pelmet $VERSION" \
+            --window-size 540 380 \
+            --icon "Pelmet.app" 140 190 \
+            --app-drop-link 400 190 \
+            --hdiutil-quiet \
+            "dist/Pelmet-$VERSION.dmg" \
+            "stage/" || test -f "dist/Pelmet-$VERSION.dmg"
+
+      - name: Notarize + staple the DMG
+        if: env.DRY_RUN != 'true'
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          xcrun notarytool submit "dist/Pelmet-$VERSION.dmg" \
+            --key "$RUNNER_TEMP/AuthKey.p8" \
+            --key-id "${{ secrets.NOTARY_KEY_ID }}" \
+            --issuer "${{ secrets.NOTARY_ISSUER_ID }}" \
+            --wait
+          xcrun stapler staple "dist/Pelmet-$VERSION.dmg"
+          rm -f "$RUNNER_TEMP/AuthKey.p8"
+
+      - name: Checksums
+        if: env.DRY_RUN != 'true'
+        id: sums
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          cd dist
+          shasum -a 256 "Pelmet-$VERSION.dmg" "Pelmet-$VERSION.zip" | tee checksums.txt
+          echo "dmg_sha=$(shasum -a 256 "Pelmet-$VERSION.dmg" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+          TAG: ${{ steps.v.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --title "Pelmet $VERSION" \
+            --generate-notes \
+            dist/Pelmet-$VERSION.dmg \
+            dist/Pelmet-$VERSION.zip \
+            dist/checksums.txt
+
+      # ---- Keep the Homebrew tap's cask in sync with this release ----
+      - name: Bump Homebrew cask
+        if: env.DRY_RUN != 'true'
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.v.outputs.version }}
+          SHA: ${{ steps.sums.outputs.dmg_sha }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "HOMEBREW_TAP_TOKEN not set — skipping cask bump (do it manually or add the secret)."
+            exit 0
+          fi
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/ismatBabirli/homebrew-pelmet.git" tap
+          cd tap
+          sed -i '' "s/version \".*\"/version \"$VERSION\"/" Casks/pelmet.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA\"/" Casks/pelmet.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/pelmet.rb
+          git commit -m "pelmet $VERSION" || echo "nothing to commit"
+          git push

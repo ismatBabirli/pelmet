@@ -6,5 +6,5 @@ instead of opening a public issue.
 
 **Report privately:** [github.com/ismatBabirli/pelmet/security/advisories/new](https://github.com/ismatBabirli/pelmet/security/advisories/new)
 
-You'll get a response within a week. Only the latest code on `main` is
-supported (there are no packaged releases yet).
+You'll get a response within a week. Only the latest release — and the current
+`main` — is supported.
