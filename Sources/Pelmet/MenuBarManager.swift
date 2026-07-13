@@ -288,13 +288,16 @@ final class MenuBarManager: NSObject {
         // still run before any classification confirms (a busy just-logged-in
         // bar may never settle). Swallowed-education needs a real count.
         let classification = latestClassification
+        // Toggle-anchored tips wait for a visible toggle — a popover anchored
+        // to a notch-swallowed or just-recreated button shows detached.
+        let toggleOK = classification?.toggleVisible ?? true
         OnboardingController.shared.maybeShowLaunchTips(
             separator: separatorItem,
             toggle: toggleItem,
             separatorVisible: classification?.separatorHealth == .visible,
-            toggleVisible: classification?.toggleVisible ?? true
+            toggleVisible: toggleOK
         )
-        if let classification {
+        if let classification, toggleOK {
             OnboardingController.shared.maybeShowSwallowedEducation(
                 count: classification.swallowedCount,
                 toggle: toggleItem
@@ -304,7 +307,9 @@ final class MenuBarManager: NSObject {
                 toggle: toggleItem
             )
         }
-        OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
+        if toggleOK {
+            OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
+        }
     }
 
     /// The toggle is the escape hatch — if it ever gets swallowed the user
@@ -314,6 +319,10 @@ final class MenuBarManager: NSObject {
               Date().timeIntervalSince(lastToggleRescue) > 60 else { return }
         toggleRescueAttempts += 1
         lastToggleRescue = Date()
+
+        // The old toggle's window dies in recreate — close any tip tethered
+        // to it before it orphans mid-air.
+        OnboardingController.shared.closeActiveTip(ifAnchoredTo: toggleItem.button)
 
         if isCollapsed {
             // Collapsed with an unreachable toggle means locked out: reveal
@@ -583,6 +592,9 @@ final class MenuBarManager: NSObject {
     /// notch, or off among icons the user can't find): recreate it in the
     /// seeded spot next to the toggle.
     @objc private func resetDividerPosition() {
+        // The old separator's window dies in recreate — close any tip
+        // tethered to it before it orphans mid-air.
+        OnboardingController.shared.closeActiveTip(ifAnchoredTo: separatorItem.button)
         let wasCollapsed = isCollapsed
         separatorItem = StatusItemRescuer.recreate(
             separatorItem,
