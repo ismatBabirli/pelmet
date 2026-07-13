@@ -22,8 +22,8 @@ swift run
 ```
 
 That's the whole fast loop — the toggle and divider appear in your menu bar
-immediately. The only thing `swift run` can't do is launch-at-login (it needs
-a real .app bundle). To test that:
+immediately. The only things `swift run` can't do are launch-at-login and
+Sparkle auto-updates (both need a real .app bundle). To test those:
 
 ```bash
 brew install xcodegen
@@ -55,14 +55,21 @@ geometry lives in `Sources/PelmetCore/`.
 | `Settings/SettingsPane.swift` | Pane descriptors: titles, icons, notch-gated availability |
 | `Settings/*PaneView.swift` | The panes: General, Menu Bar Space, One-Click Access |
 | `Settings/SettingsWindowController.swift` | Hosts the settings window from an accessory app |
+| `Shelf/` | The blurred "+N hidden icons" panel: panel, controller, SwiftUI rows, owner resolution |
+| `Activation/` | Opt-in Accessibility engine: one-click activation of real status items (AX reader, synthetic events, permission monitor) |
+| `Updates/UpdaterController.swift` | Sparkle facade — real under `#if canImport(Sparkle)` (XcodeGen build), inert stub in plain SPM |
 | `../PelmetCore/MenuBarLayoutClassifier.swift` | Pure geometry: which icons is macOS hiding at the notch |
+| `../PelmetCore/ShelfContent.swift`, `ShelfPlacement.swift`, `TipPlacement.swift`, `ScreenCoordinates.swift` | Pure Shelf/tip content derivation and placement geometry |
+| `../PelmetCore/Activation/` | Pure activation planning: `ActivationPlanner`, `ActivationSession`, `StatusItemCorrelator`, `QuiescencePolicy` |
 
 Two ground rules:
 
 1. **The zero-permission core is sacred.** The default experience must never
    require Screen Recording or Accessibility. Features that need a permission
-   (like the planned notch panel) are opt-in only.
-2. **No dependencies so far.** Think twice before adding one.
+   (like one-click access) are opt-in only.
+2. **Sparkle is the only dependency** — and only in the XcodeGen app bundle,
+   behind `#if canImport(Sparkle)`; the plain SPM build stays dependency-free.
+   Think twice before adding another.
 
 ## Code style
 
