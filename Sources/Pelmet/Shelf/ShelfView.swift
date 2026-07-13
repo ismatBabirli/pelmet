@@ -53,7 +53,7 @@ struct ShelfView: View {
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
         )
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Pelmet Shelf — icons hidden by the notch")
+        .accessibilityLabel("Pelmet Shelf: icons hidden by the notch")
     }
 
     // MARK: - Sections
@@ -70,7 +70,7 @@ struct ShelfView: View {
         case .owners, .engine:
             return "Hidden by the notch"
         case .anonymous:
-            return "Hidden by the notch — macOS 26 hides which apps these belong to"
+            return "Hidden by the notch. macOS 26 hides which apps these belong to"
         }
     }
 
@@ -79,7 +79,7 @@ struct ShelfView: View {
             Image(systemName: "checkmark.circle")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text("Everything fits — nothing is hidden by the notch.")
+            Text("Everything fits. Nothing is hidden by the notch.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -169,10 +169,15 @@ struct ShelfView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             if model.canOfferEngineOptIn {
-                Button("Enable one-click access…") {
-                    model.requestEngineOptIn()
+                Button(model.optInIsBlocked ? "Open System Settings…" : "Enable one-click access…") {
+                    model.offerOptIn()
                 }
                 .font(.caption)
+                if model.optInIsBlocked {
+                    Text("Pelmet is waiting for the Accessibility permission.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
         .padding(10)
@@ -186,7 +191,7 @@ struct ShelfView: View {
     private func explanationText(for row: ShelfRow) -> String {
         switch row.model.kind {
         case .app(_, let name, _):
-            return "macOS won't let Pelmet open \(name)'s menu without the Accessibility permission — one-click access is opt-in and never reads your screen."
+            return "macOS won't let Pelmet open \(name)'s menu without the Accessibility permission. One-click access is opt-in and never reads your screen."
         default:
             return "Enable one-click access to identify these items and open them with a single click. It uses the Accessibility permission and never reads your screen."
         }
@@ -214,8 +219,8 @@ struct ShelfView: View {
             .font(.caption)
             Spacer()
             if model.canOfferEngineOptIn, !model.rows.isEmpty {
-                Button("Enable one-click access…") {
-                    model.requestEngineOptIn()
+                Button(model.optInIsBlocked ? "Open System Settings…" : "Enable one-click access…") {
+                    model.offerOptIn()
                 }
                 .font(.caption)
             }

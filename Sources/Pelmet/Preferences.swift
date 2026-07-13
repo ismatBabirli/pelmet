@@ -18,6 +18,9 @@ enum Preferences {
         static let didShowShelfTip = "didShowShelfTip"
         static let activationEngineEnabled = "activationEngineEnabled"
         static let didPromptForAccessibility = "didPromptForAccessibility"
+        static let didOfferOneClick = "didOfferOneClick"
+        static let didAutoPromptAccessibility = "didAutoPromptAccessibility"
+        static let awaitingOneClickGrant = "awaitingOneClickGrant"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -66,6 +69,29 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: Keys.didPromptForAccessibility) }
     }
 
+    /// One-shot gate for the first-run "one-click access" pitch popover. Reset
+    /// by `resetOnboardingFlags()` so "Show Welcome Tips Again" re-offers it.
+    static var didOfferOneClick: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.didOfferOneClick) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.didOfferOneClick) }
+    }
+
+    /// Ensures the system Accessibility prompt is auto-fired at most once ever
+    /// (first run only). Never reset — a replay re-offers the pitch but must
+    /// not auto-fire the OS dialog again.
+    static var didAutoPromptAccessibility: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.didAutoPromptAccessibility) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.didAutoPromptAccessibility) }
+    }
+
+    /// Armed when we ask for Accessibility on the user's behalf; when the grant
+    /// lands the engine turns itself on. Persisted so a grant made after the
+    /// poll window (or on a later launch) still enables one-click.
+    static var awaitingOneClickGrant: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.awaitingOneClickGrant) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.awaitingOneClickGrant) }
+    }
+
     // MARK: - One-time onboarding flags
 
     static var didShowDividerTip: Bool {
@@ -100,5 +126,9 @@ enum Preferences {
         didShowToggleTip = false
         didShowSwallowedEducation = false
         didShowShelfTip = false
+        didOfferOneClick = false
+        // NOTE: didAutoPromptAccessibility, awaitingOneClickGrant,
+        // didPromptForAccessibility and activationEngineEnabled are system /
+        // opt-in facts, not onboarding — never reset here.
     }
 }

@@ -3,8 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**', 'LICENSE', '.github/ISSUE_TEMPLATE/**', '.github/FUNDING.yml', '.github/CODEOWNERS']
   pull_request:
     branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**', 'LICENSE', '.github/ISSUE_TEMPLATE/**', '.github/FUNDING.yml', '.github/CODEOWNERS']
 
 # Least privilege: CI only ever needs to read the repo.
 permissions:
@@ -16,16 +18,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Fast loop: the SwiftPM build plus the PelmetCore test suite.
-  build-and-test:
-    name: swift build & test
+  # Fast loop: the PelmetCore test suite. `swift test` builds what it needs;
+  # the xcode-build job below is the authoritative "the app compiles" check.
+  test:
+    name: swift test
     runs-on: macos-15
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved', 'Package.swift', 'Sources/**', 'Tests/**') }}
+          restore-keys: spm-${{ runner.os }}-
       - name: Toolchain versions
         run: swift --version
-      - name: Build
-        run: swift build
       - name: Test
         run: swift test
 
@@ -34,6 +42,10 @@ jobs:
   xcode-build:
     name: xcodegen & xcodebuild
     runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALL_CLEANUP: 1
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
