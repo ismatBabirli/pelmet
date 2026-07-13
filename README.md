@@ -18,8 +18,9 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 </div>
 
 > [!NOTE]
-> **Status: working MVP.** Hide/show works today with zero special permissions.
-> The notch-aware floating panel is on the [roadmap](#roadmap).
+> **Status: shipping.** Hide/show works with zero special permissions, and the
+> notch-aware Shelf panel and opt-in one-click access have shipped. Show-on-hover
+> and profiles are next on the [roadmap](#roadmap).
 
 ## Why
 

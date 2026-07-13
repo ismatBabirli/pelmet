@@ -37,8 +37,8 @@ Pelmet occupies a deliberate position in that landscape:
 ```
 
 - **The divider (╱):** everything the user ⌘-drags to its left is managed by Pelmet.
-- **Collapse mechanism:** the divider inflates to ~10,000 pt, pushing managed items past the screen edge. Battle-tested (Hidden Bar, Dozer), permission-free.
-- **The Shelf (phase 2):** a floating, blurred panel below the notch that shows hidden icons live and forwards clicks — so items are usable *without* rearranging the menu bar.
+- **Collapse mechanism:** the divider inflates to ~4,000 pt (macOS caps status-item windows near 5,000 pt), pushing managed items past the screen edge. Battle-tested (Hidden Bar, Dozer), permission-free.
+- **The Shelf (phase 2, shipped in 0.1.0):** a floating, blurred panel below the notch that shows hidden icons live and forwards clicks — so items are usable *without* rearranging the menu bar.
 
 ## 4. Feature Plan by Phase
 
@@ -52,19 +52,19 @@ Pelmet occupies a deliberate position in that landscape:
 - Runs via `swift run`, XcodeGen, or manual Xcode project
 - Zero permissions required
 
-### 🔨 Phase 1 — Polish & Distribution
+### 🔨 Phase 1 — Polish & Distribution (partially shipped)
 
 *Goal: something people can install and love in under a minute.*
 
 - **Fluid animations** for expand/collapse (the "Vanilla moment" — icons glide, not blink)
 - **Show on hover / scroll:** reveal hidden items when the pointer touches the menu bar or the user scrolls on it
 - **Custom hotkey recorder** (replace hardcoded ⌥⌘B)
-- **Onboarding:** first-launch walkthrough teaching the ⌘-drag gesture
-- **App icon & identity:** pelmet/curtain metaphor, warm and crafted
-- **Distribution pipeline:** GitHub Actions → build, codesign, notarize → GitHub Releases + Homebrew cask (`brew install --cask pelmet`) + Sparkle auto-updates
+- ✅ **Onboarding:** first-launch walkthrough teaching the ⌘-drag gesture (shipped in 0.1.0)
+- ✅ **App icon & identity:** pelmet/curtain metaphor, warm and crafted (shipped in 0.1.0)
+- ✅ **Distribution pipeline:** GitHub Actions → build, codesign, notarize → GitHub Releases + Homebrew cask (`brew install --cask pelmet`) — shipped in 0.1.0; Sparkle auto-updates shipped in 0.2.0
 - Multi-display awareness and menu bar changes across Spaces
 
-### 🌟 Phase 2 — The Shelf (flagship feature)
+### ✅ Phase 2 — The Shelf (flagship feature, shipped in 0.1.0)
 
 *Goal: the beautiful, actionable answer to the notch.*
 
