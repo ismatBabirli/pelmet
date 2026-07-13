@@ -52,7 +52,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Toggle("Open the Shelf when clicking the count", isOn: $shelfEnabled)
                         Text("The Shelf is a panel under the notch listing the icons macOS hid. "
-                            + "Turned off, a click always hides/shows icons instead — the Shelf stays "
+                            + "Turned off, a click always hides/shows icons instead; the Shelf stays "
                             + "one right-click (or ⌥⌘N) away.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -112,7 +112,7 @@ struct SettingsView: View {
             } else {
                 Section("Menu Bar Space") {
                     Label {
-                        Text("This Mac has no camera notch — icons rarely run out of room.")
+                        Text("This Mac has no camera notch, so icons rarely run out of room.")
                     } icon: {
                         Image(systemName: "info.circle")
                     }
@@ -152,8 +152,7 @@ struct SettingsView: View {
     }
 
     private func openAccessibilitySettings() {
-        let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
-        NSWorkspace.shared.open(url)
+        AXPermissionMonitor.openSystemSettings()
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {

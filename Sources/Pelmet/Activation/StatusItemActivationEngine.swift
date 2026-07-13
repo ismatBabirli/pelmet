@@ -31,6 +31,12 @@ protocol StatusItemActivating: AnyObject {
 
     func setEnabled(_ enabled: Bool)
     func requestAccess()
+    /// Route any "enable one-click access" affordance to the right outcome:
+    /// fire the system prompt, deep-link to System Settings when the OS won't
+    /// re-show it, or just enable when already trusted. `proactive` = the
+    /// passive first-run auto-prompt (keep the engine OFF until the grant
+    /// lands); an explicit user tap passes `false` and enables immediately.
+    func offerOneClick(proactive: Bool)
     func refreshDirectory(reason: String)
     func activate(recordID: String, completion: @escaping (ActivationResult) -> Void)
 }
@@ -176,10 +182,12 @@ final class StatusItemActivationEngine: StatusItemActivating {
             }),
         ]
         AXPermissionMonitor.shared.onChange = { [weak self] in
-            self?.recomputeAvailability()
+            self?.handleAXChange()
         }
         AXPermissionMonitor.shared.startObserving()
-        recomputeAvailability()
+        // handleAXChange (not just recompute) so a grant made while awaiting —
+        // including one granted before this launch — flips the engine on.
+        handleAXChange()
         Self.debugTrace {
             "start: enabled=\(Preferences.activationEngineEnabled) "
                 + "trusted=\(AXIsProcessTrusted()) availability=\(availability)"
@@ -198,6 +206,29 @@ final class StatusItemActivationEngine: StatusItemActivating {
         recomputeAvailability()
     }
 
+    func offerOneClick(proactive: Bool) {
+        // Already trusted at the system level: just turn the feature on.
+        if AXIsProcessTrusted() {
+            Preferences.awaitingOneClickGrant = false
+            Preferences.activationEngineEnabled = true
+            recomputeAvailability()
+            return
+        }
+        // Not proactive means an explicit tap — honor the intent to enable now;
+        // the passive first-run offer keeps the engine off until the grant.
+        if !proactive { Preferences.activationEngineEnabled = true }
+        // Arm the enable-on-grant latch either way.
+        Preferences.awaitingOneClickGrant = true
+        if Preferences.didPromptForAccessibility {
+            // The OS modal won't reappear once we're already listed — send the
+            // user straight to the Accessibility pane instead of no-op'ing.
+            AXPermissionMonitor.openSystemSettings()
+        } else {
+            AXPermissionMonitor.shared.requestWithPrompt()
+        }
+        recomputeAvailability()
+    }
+
     func refreshDirectory(reason: String) {
         _ = reason
         rebuildDirectory()
@@ -208,6 +239,19 @@ final class StatusItemActivationEngine: StatusItemActivating {
     }
 
     // MARK: - Availability
+
+    /// Fired whenever the Accessibility trust state may have changed. If we
+    /// asked on the user's behalf (`awaitingOneClickGrant`) and the grant has
+    /// now landed, turn one-click on — this is the only place the passive
+    /// first-run flow enables the engine, since `recomputeAvailability` reports
+    /// `.notDetermined` while the engine is still off.
+    private func handleAXChange() {
+        if Preferences.awaitingOneClickGrant, AXIsProcessTrusted() {
+            Preferences.awaitingOneClickGrant = false
+            Preferences.activationEngineEnabled = true
+        }
+        recomputeAvailability()
+    }
 
     func recomputeAvailability() {
         let wasGranted = availability == .granted
@@ -479,7 +523,7 @@ final class StatusItemActivationEngine: StatusItemActivating {
                     let found = results.filter { !$0.value.isEmpty }
                     return "AX sweep: attempted \(results.count)/\(ordered.count) apps, "
                         + "\(found.count) with extras (\(found.values.map(\.count).reduce(0, +)) items)"
-                        + (attemptedAll ? "" : " — continuing")
+                        + (attemptedAll ? "" : " (continuing)")
                 }
 
                 // Route back through rebuildDirectory: it refreshes cached

@@ -47,6 +47,16 @@ final class AXPermissionMonitor {
         recompute()
     }
 
+    /// Deep-links to the Accessibility pane. The single home for this URL —
+    /// needed because `AXIsProcessTrustedWithOptions` will not re-show the OS
+    /// modal once the app is already listed (even if toggled off), so every
+    /// opt-in surface must be able to fall back to System Settings.
+    static func openSystemSettings() {
+        let url = URL(string:
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
+        NSWorkspace.shared.open(url)
+    }
+
     func recompute() {
         let trusted = AXIsProcessTrusted()
         guard trusted != lastKnownTrusted else { return }

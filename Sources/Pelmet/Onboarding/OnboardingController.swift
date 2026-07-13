@@ -13,34 +13,43 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
 
     // MARK: - Entry points (called on confirmed layout snapshots)
 
-    /// First-launch teaching, gated on the divider actually being visible —
-    /// a divider born behind the notch gets its tip when it first appears.
-    func maybeShowLaunchTips(separator: NSStatusItem, toggle: NSStatusItem, separatorVisible: Bool) {
+    /// First-launch teaching. The welcome anchors on the TOGGLE — always
+    /// present and auto-rescued — so a divider born behind the notch can no
+    /// longer stall onboarding. The divider spotlight is a second, opportunistic
+    /// tip that waits for the ╱ to actually surface and blocks nothing.
+    func maybeShowLaunchTips(
+        separator: NSStatusItem, toggle: NSStatusItem,
+        separatorVisible: Bool, toggleVisible: Bool
+    ) {
         guard activePopover == nil else { return }
 
-        if !Preferences.didShowDividerTip {
-            guard separatorVisible, let button = separator.button else { return }
-            Preferences.didShowDividerTip = true
+        // 1. Welcome (on the toggle): teaches the ╱ concept AND click-to-hide.
+        if !Preferences.didShowToggleTip {
+            guard toggleVisible, let button = toggle.button else { return }
+            Preferences.didShowToggleTip = true
+            let delay = Int(Preferences.rehideDelay)
             show(
-                title: "Meet your divider",
-                message: "When you collapse, Pelmet hides everything to the left of this ╱ divider. "
-                    + "Hold ⌘ and drag the icons you always want visible to its right, next to the clock.",
+                title: "Welcome to Pelmet",
+                message: "This ‹/› chevron hides everything to the left of the ╱ divider. "
+                    + "Click it (or press ⌥⌘B) to clear the clutter, click again to bring it back. "
+                    + "⌘-drag the icons you always want visible to the divider's right, next to the "
+                    + "clock. Revealed icons re-hide after \(delay) seconds; change that in Settings.",
                 buttonTitle: "Got It",
                 on: button
             )
             return
         }
 
-        if !Preferences.didShowToggleTip {
-            guard let button = toggle.button else { return }
-            Preferences.didShowToggleTip = true
-            let delay = Int(Preferences.rehideDelay)
+        // 2. Divider spotlight (on the separator): opportunistic — only once the
+        //    ╱ is genuinely visible; otherwise retried on a later snapshot.
+        if !Preferences.didShowDividerTip {
+            guard separatorVisible, let button = separator.button else { return }
+            Preferences.didShowDividerTip = true
             show(
-                title: "Hide the clutter",
-                message: "Click this chevron (or press ⌥⌘B) to hide everything left of ╱ — "
-                    + "click again to bring it back. Revealed icons re-hide after \(delay) seconds; "
-                    + "change that in Settings.",
-                buttonTitle: "Done",
+                title: "This is your divider",
+                message: "Pelmet hides everything to the left of this ╱. ⌘-drag icons to its "
+                    + "right to keep them next to the clock, always visible.",
+                buttonTitle: "Got It",
                 on: button
             )
         }
@@ -52,7 +61,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
     func maybeShowSwallowedEducation(count: Int, toggle: NSStatusItem) {
         guard activePopover == nil,
               !Preferences.didShowSwallowedEducation,
-              Preferences.didShowDividerTip, Preferences.didShowToggleTip,
+              Preferences.didShowToggleTip,
               count > 0,
               let button = toggle.button else { return }
         Preferences.didShowSwallowedEducation = true
@@ -60,7 +69,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         let phrase = count == 1 ? "1 icon doesn't fit" : "\(count) icons don't fit"
         show(
             title: phrase,
-            message: "The notch hides menu bar icons that run out of room — macOS gives no warning. "
+            message: "The notch hides menu bar icons that run out of room, and macOS gives no warning. "
                 + "Pelmet shows a count beside its chevron whenever that happens. "
                 + "Click the chevron to open the Shelf and see exactly what's hidden; "
                 + "right-click for ways to make room.",
@@ -81,11 +90,46 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         Preferences.didShowShelfTip = true
         show(
             title: "See what's hidden",
-            message: "New: when the chevron shows +\(count), click it to open the Shelf — "
+            message: "New: when the chevron shows +\(count), click it to open the Shelf, "
                 + "a panel listing the icons the notch hid. ⌥⌘N works too.",
             buttonTitle: "Got It",
             on: button
         )
+    }
+
+    /// Offers the opt-in "one-click access" feature once, on notched Macs where
+    /// it matters. On the genuine first run it PROACTIVELY fires the system
+    /// Accessibility prompt (context popover first, OS dialog a beat later); on
+    /// a replay it only shows the pitch and waits for the button. Either way the
+    /// engine stays off until the grant lands (see `offerOneClick`).
+    func maybeOfferOneClick(toggle: NSStatusItem) {
+        guard activePopover == nil,
+              !Preferences.didOfferOneClick,
+              LayoutStatus.shared.hasNotchedDisplay,
+              !Preferences.activationEngineEnabled,
+              StatusItemActivationEngine.shared.availability != .granted,
+              let button = toggle.button else { return }
+        Preferences.didOfferOneClick = true
+
+        let autoPrompt = !Preferences.didAutoPromptAccessibility
+        if autoPrompt { Preferences.didAutoPromptAccessibility = true }
+
+        show(
+            title: "Open hidden icons with one click",
+            message: "Turn on One-Click Access and Pelmet can open the icons the notch hides "
+                + "with a single click. It reads which app owns each icon and simulates a click. "
+                + "It never reads your screen, and you can turn it off any time in Settings.",
+            buttonTitle: autoPrompt ? "Got It" : "Enable One-Click Access…",
+            on: button,
+            action: autoPrompt ? nil : { StatusItemActivationEngine.shared.offerOneClick(proactive: false) }
+        )
+
+        if autoPrompt {
+            // Context first, system dialog second — never a bare OS modal.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                StatusItemActivationEngine.shared.offerOneClick(proactive: true)
+            }
+        }
     }
 
     /// Settings → "Show Welcome Tips Again".
@@ -96,13 +140,17 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
 
     // MARK: - Popover plumbing
 
-    private func show(title: String, message: String, buttonTitle: String, on button: NSStatusBarButton) {
+    private func show(
+        title: String, message: String, buttonTitle: String,
+        on button: NSStatusBarButton, action: (() -> Void)? = nil
+    ) {
         let popover = NSPopover()
         popover.behavior = .semitransient
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.delegate = self
         popover.contentViewController = NSHostingController(
             rootView: TipView(title: title, message: message, buttonTitle: buttonTitle) { [weak popover] in
+                action?()
                 popover?.performClose(nil)
             }
         )

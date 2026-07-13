@@ -66,7 +66,7 @@ struct MakeRoomView: View {
                 symbol: "arrow.left.and.right",
                 title: "Tighten icon spacing",
                 text: "macOS spaces menu bar icons generously. Reducing the spacing fits more icons "
-                    + "beside the notch. No permissions involved — the change takes effect the next "
+                    + "beside the notch. No permissions involved; the change takes effect the next "
                     + "time you log in."
             ) {
                 VStack(alignment: .leading, spacing: 6) {

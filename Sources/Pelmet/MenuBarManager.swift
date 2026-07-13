@@ -54,6 +54,10 @@ final class MenuBarManager: NSObject {
     private var toggleRescueAttempts = 0
     private var lastToggleRescue = Date.distantPast
 
+    /// One-shot fallback so first-run onboarding isn't hostage to a confirmed
+    /// layout that a busy bar may never produce.
+    private var firstRunWelcomeTimer: Timer?
+
     /// The Shelf's seam to the opt-in activation machinery. Always present;
     /// degrades honestly when the Accessibility grant is absent.
     var shelfEngine: StatusItemActivating { StatusItemActivationEngine.shared }
@@ -133,6 +137,21 @@ final class MenuBarManager: NSObject {
         }
 
         NotchLayoutMonitor.shared.requestMeasurement(reason: .launch)
+        armFirstRunWelcomeFallback()
+    }
+
+    /// If the layout never settles into a confirmed classification, `apply()`
+    /// never fires and onboarding would never run. After a short delay, drive
+    /// the checks directly — `maybeShowLaunchTips`/`maybeOfferOneClick` are
+    /// layout-independent and the `didShowToggleTip`/`didOfferOneClick` gates
+    /// keep this idempotent with the confirmed path.
+    private func armFirstRunWelcomeFallback() {
+        guard !Preferences.didShowToggleTip else { return }
+        firstRunWelcomeTimer = Timer.scheduledTimer(
+            withTimeInterval: 4, repeats: false
+        ) { [weak self] _ in
+            self?.reapplyOnboardingChecks()
+        }
     }
 
     /// macOS stores each status item's position in UserDefaults under
@@ -178,7 +197,7 @@ final class MenuBarManager: NSObject {
         guard let button = item.button else { return }
         button.image = separatorImage()
         button.appearsDisabled = true
-        button.toolTip = "Pelmet hides everything left of this divider — ⌘-drag icons you always want visible to its right."
+        button.toolTip = "Pelmet hides everything left of this divider. ⌘-drag icons you always want visible to its right."
         button.setAccessibilityLabel("Pelmet divider")
     }
 
@@ -264,20 +283,28 @@ final class MenuBarManager: NSObject {
     /// Called on every confirmed snapshot and again when a tip closes (the
     /// tips chain: divider → toggle → count education).
     func reapplyOnboardingChecks() {
-        guard let classification = latestClassification, !isCollapsed else { return }
+        guard !isCollapsed else { return }
+        // The welcome and the one-click offer are layout-independent, so they
+        // still run before any classification confirms (a busy just-logged-in
+        // bar may never settle). Swallowed-education needs a real count.
+        let classification = latestClassification
         OnboardingController.shared.maybeShowLaunchTips(
             separator: separatorItem,
             toggle: toggleItem,
-            separatorVisible: classification.separatorHealth == .visible
+            separatorVisible: classification?.separatorHealth == .visible,
+            toggleVisible: classification?.toggleVisible ?? true
         )
-        OnboardingController.shared.maybeShowSwallowedEducation(
-            count: classification.swallowedCount,
-            toggle: toggleItem
-        )
-        OnboardingController.shared.maybeShowShelfTip(
-            count: classification.swallowedCount,
-            toggle: toggleItem
-        )
+        if let classification {
+            OnboardingController.shared.maybeShowSwallowedEducation(
+                count: classification.swallowedCount,
+                toggle: toggleItem
+            )
+            OnboardingController.shared.maybeShowShelfTip(
+                count: classification.swallowedCount,
+                toggle: toggleItem
+            )
+        }
+        OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
     }
 
     /// The toggle is the escape hatch — if it ever gets swallowed the user
@@ -396,11 +423,11 @@ final class MenuBarManager: NSObject {
         let tooltip: String
         let accessibilityValue: String
         if isCollapsed {
-            tooltip = "Pelmet — show hidden icons (⌥⌘B)"
+            tooltip = "Pelmet: show hidden icons (⌥⌘B)"
             accessibilityValue = "Icons hidden"
         } else if separatorSwallowed {
-            tooltip = "The menu bar is full — Pelmet's divider is hidden by the notch. Right-click for options."
-            accessibilityValue = "Icons shown. The divider is hidden — the menu bar is full."
+            tooltip = "The menu bar is full. Pelmet's divider is hidden by the notch. Right-click for options."
+            accessibilityValue = "Icons shown. The divider is hidden; the menu bar is full."
         } else if swallowedCount > 0 {
             // "Click to see them" only when a click actually opens the Shelf
             // — i.e. the badge is visible (showCount) and the Shelf is on.
@@ -412,7 +439,7 @@ final class MenuBarManager: NSObject {
                 accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch."
             }
         } else {
-            tooltip = "Pelmet — hide icons (⌥⌘B)"
+            tooltip = "Pelmet: hide icons (⌥⌘B)"
             accessibilityValue = "Icons shown"
         }
         button.toolTip = tooltip
@@ -437,14 +464,14 @@ final class MenuBarManager: NSObject {
         // (disabled informational rows, the Wi-Fi-menu pattern).
         var statusLines: [String] = []
         if separatorSwallowed {
-            statusLines.append("Pelmet's divider is hidden — the menu bar is full")
+            statusLines.append("Pelmet's divider is hidden; the menu bar is full")
         }
         if swallowedCount > 0 {
             let fitPhrase = swallowedCount == 1 ? "1 icon doesn't fit" : "\(swallowedCount) icons don't fit"
             statusLines.append(
                 isCollapsed
                     ? "\(fitPhrase) even while collapsed"
-                    : "\(fitPhrase) — hidden by the notch"
+                    : "\(fitPhrase), hidden by the notch"
             )
         }
         if !statusLines.isEmpty {
@@ -504,6 +531,19 @@ final class MenuBarManager: NSObject {
         resetEntry.target = self
         menu.addItem(resetEntry)
 
+        // A permanent path to enable one-click open — survives a dismissed or
+        // never-seen onboarding popover. Only where it's relevant (notched Mac,
+        // not yet granted).
+        if LayoutStatus.shared.hasNotchedDisplay, shelfEngine.availability != .granted {
+            let oneClickEntry = NSMenuItem(
+                title: "Open Hidden Icons with One Click…",
+                action: #selector(enableOneClickFromMenu),
+                keyEquivalent: ""
+            )
+            oneClickEntry.target = self
+            menu.addItem(oneClickEntry)
+        }
+
         let settingsEntry = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsEntry.target = self
         menu.addItem(settingsEntry)
@@ -523,6 +563,10 @@ final class MenuBarManager: NSObject {
     }
 
     @objc private func menuToggle() { toggle() }
+
+    @objc private func enableOneClickFromMenu() {
+        shelfEngine.offerOneClick(proactive: false)
+    }
 
     /// Escape hatch for a divider ⌘-dragged somewhere invisible (under the
     /// notch, or off among icons the user can't find): recreate it in the

@@ -48,6 +48,14 @@ final class ShelfViewModel: ObservableObject {
         tier != .engine && engineAvailability != .granted
     }
 
+    /// We asked for Accessibility before but still aren't granted: the OS won't
+    /// re-show its modal, so the button must deep-link to System Settings
+    /// instead of silently no-op'ing. (`engineAvailability` reads
+    /// `.notDetermined` while the engine is off, so lean on the prompt flag.)
+    var optInIsBlocked: Bool {
+        engineAvailability != .granted && Preferences.didPromptForAccessibility
+    }
+
     func update(entries: [ShelfEntryModel]) {
         rows = entries.map { entry in
             ShelfRow(model: entry, icon: icon(for: entry))
@@ -113,9 +121,10 @@ final class ShelfViewModel: ObservableObject {
         }
     }
 
-    func requestEngineOptIn() {
-        engine.setEnabled(true)
-        engine.requestAccess()
+    func offerOptIn() {
+        // Explicit tap → enable now; routes to the OS prompt, or to System
+        // Settings when the modal won't reappear (see `offerOneClick`).
+        engine.offerOneClick(proactive: false)
     }
 
     static func failureMessage(_ failure: ActivationFailure) -> String {
@@ -123,13 +132,13 @@ final class ShelfViewModel: ObservableObject {
         case .permissionDenied:
             return "Pelmet needs the Accessibility permission to open items."
         case .itemVanished:
-            return "That icon just disappeared — it may have been closed."
+            return "That icon just disappeared. It may have been closed."
         case .blockedByNotch, .noRoomToExpose:
-            return "Couldn't open it — the bar is too full. Try Make Room."
+            return "Couldn't open it. The bar is too full. Try Make Room."
         case .busy, .userInteracting:
-            return "Busy — try again in a moment."
+            return "Busy. Try again in a moment."
         case .interrupted, .timedOut:
-            return "Couldn't open it — try again."
+            return "Couldn't open it. Try again."
         }
     }
 

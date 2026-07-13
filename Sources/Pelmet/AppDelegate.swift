@@ -11,7 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // items off-screen so every chevron looks dead. The lock is released
         // automatically when this process exits. See acquireSingleInstanceLock.
         guard Self.acquireSingleInstanceLock() else {
-            print("Another copy of Pelmet is already running — quitting this one.")
+            print("Another copy of Pelmet is already running. Quitting this one.")
             fflush(stdout)
             NSApp.terminate(nil)
             return
@@ -72,8 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "  sits just left of the chevron.",
             hotkeys.toggle
                 ? "  • Click the chevron or press ⌥⌘B to hide/show icons."
-                : "  • Click the chevron to hide/show icons. (⌥⌘B is unavailable — another app claimed it.)",
-            "  • Pelmet hides everything LEFT of ╱ — ⌘-drag icons you always",
+                : "  • Click the chevron to hide/show icons. (⌥⌘B is unavailable; another app claimed it.)",
+            "  • Pelmet hides everything LEFT of ╱. ⌘-drag icons you always",
             "    want visible to its RIGHT, next to the clock.",
         ]
         if Preferences.autoRehide {
@@ -81,7 +81,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         lines.append(contentsOf: [
             "  • A number next to the chevron (like +3) means that many icons don't fit",
-            "    beside the notch — click the chevron to see them on the Shelf"
+            "    beside the notch. Click the chevron to see them on the Shelf"
                 + (hotkeys.shelf ? " (or press ⌥⌘N)." : "."),
             "  • Can't find Pelmet in the bar? Launching it again opens its Settings window.",
             "  • Ctrl-C here (or closing this terminal) quits Pelmet.",

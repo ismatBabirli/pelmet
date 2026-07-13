@@ -28,8 +28,8 @@ enum MenuBarSpacing {
         var label: String {
             switch self {
             case .systemDefault: return "System default"
-            case .reduced: return "Reduced — subtle change"
-            case .compact: return "Compact — fits the most icons"
+            case .reduced: return "Reduced (subtle change)"
+            case .compact: return "Compact (fits the most icons)"
             }
         }
     }
