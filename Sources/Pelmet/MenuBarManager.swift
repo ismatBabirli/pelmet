@@ -568,6 +568,12 @@ final class MenuBarManager: NSObject {
         settingsEntry.target = self
         menu.addItem(settingsEntry)
 
+        // Current version, non-actionable. autoenablesItems is off, so a
+        // nil-action item must be explicitly disabled to render grayed.
+        let versionEntry = NSMenuItem(title: AppVersionInfo.current.labeled(), action: nil, keyEquivalent: "")
+        versionEntry.isEnabled = false
+        menu.addItem(versionEntry)
+
         menu.addItem(.separator())
 
         let quitEntry = NSMenuItem(title: "Quit Pelmet", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")

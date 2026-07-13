@@ -64,3 +64,6 @@ SwiftUI settings windows. Sandbox is intentionally OFF, hardened runtime ON, and
   bundle build; both must stay green.
 - No AI attribution in commits or PRs — no `Co-Authored-By` trailers, no
   "Generated with" footers.
+- Don't write em-dashes (`—`) in prose you add: code comments, docs,
+  `CHANGELOG.md`, commit messages, and PRs. Use a colon, comma, parentheses, or
+  a period instead. (Existing em-dashes stay; only what you add follows this.)

@@ -83,6 +83,7 @@ struct SettingsRootView: View {
         case .general: GeneralPaneView()
         case .menuBarSpace: MenuBarSpacePaneView()
         case .oneClickAccess: OneClickAccessPaneView()
+        case .about: AboutPaneView()
         }
     }
 }

@@ -6,6 +6,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case general
     case menuBarSpace
     case oneClickAccess
+    case about
 
     var id: String { rawValue }
 
@@ -20,7 +21,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// context-menu entry in MenuBarManager: One-Click Access only exists
     /// where the notch makes it relevant.
     static func available(hasNotchedDisplay: Bool) -> [SettingsPane] {
-        hasNotchedDisplay ? allCases : [.general, .menuBarSpace]
+        hasNotchedDisplay ? allCases : [.general, .menuBarSpace, .about]
     }
 
     var title: String {
@@ -28,6 +29,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .general: return "General"
         case .menuBarSpace: return "Menu Bar Space"
         case .oneClickAccess: return "One-Click Access"
+        case .about: return "About"
         }
     }
 
@@ -36,6 +38,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .general: return "gearshape"
         case .menuBarSpace: return "menubar.rectangle"
         case .oneClickAccess: return "cursorarrow.click"
+        case .about: return "info.circle"
         }
     }
 
@@ -45,6 +48,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .general: return .gray
         case .menuBarSpace: return .blue
         case .oneClickAccess: return .purple
+        case .about: return .teal
         }
     }
 }
