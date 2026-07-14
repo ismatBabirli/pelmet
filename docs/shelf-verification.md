@@ -76,3 +76,21 @@ On a notched Mac:
     slide/fade. Reduce Transparency → the panel draws opaque.
 21. `PELMET_DEBUG_LAYOUT=verbose swift run` → no repeating republish loop from
     PID-only churn (the digest ignores owner changes).
+
+## Telemetry (anonymous daily ping)
+
+22. **Dry run, nothing sent.** `PELMET_DEBUG_TELEMETRY=verbose swift run` → prints
+    the gate decision and the exact JSON payload to stdout, and `active=false`
+    (a `swift run` dev build is inert). Confirms the payload shape without a send.
+23. **Kill switch.** `PELMET_DISABLE_TELEMETRY=1` or `DO_NOT_TRACK=1` → the verbose
+    trace shows `active=false`; the Settings toggle renders off and disabled under
+    `DO_NOT_TRACK`.
+24. **Inert Debug bundle.** In the XcodeGen Debug `.app`, telemetry stays off via
+    `#if DEBUG` even though the bundle has a real version. Only a Release build with
+    a real PostHog key (see `docs/TELEMETRY.md`) actually sends.
+25. **First-run notice.** On a fresh profile the "Anonymous usage statistics" notice
+    appears once, after the welcome tip, and does not stack on Sparkle's prompt.
+    "Turn Off" flips the Settings toggle; nothing sends during that session.
+26. **Crash follow-up (local only).** `kill -TRAP <pid>` a Release build, relaunch →
+    the "Pelmet quit unexpectedly" alert offers a prefilled GitHub issue and reveals
+    the newest `Pelmet-*.ips` in Finder. A normal quit or Ctrl-C does not trigger it.

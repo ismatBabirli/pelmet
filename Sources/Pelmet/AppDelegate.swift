@@ -24,6 +24,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // until they opt in. Inert under `swift run` (no bundle, no Sparkle).
         _ = UpdaterController.shared
 
+        // Local-only crash follow-up: captures the clean-exit sentinel first,
+        // then (if the last session crashed) offers a prefilled GitHub issue.
+        // No trace is ever uploaded.
+        CrashReportMonitor.shared.checkOnLaunch()
+
+        // Anonymous daily usage ping. Schedules only; sends nothing until the
+        // first-run notice is shown, and stays inert under `swift run`/DEBUG.
+        TelemetryManager.shared.start()
+
         // Global hotkeys: ⌥⌘B toggles hidden items, ⌥⌘N opens the Shelf.
         HotkeyManager.shared.onToggle = {
             MenuBarManager.shared.toggle()
@@ -38,6 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         true
+    }
+
+    /// Record a clean shutdown so the next launch doesn't mistake this quit for
+    /// a crash. SIGINT/SIGTERM are handled separately in CrashReportMonitor.
+    func applicationWillTerminate(_ notification: Notification) {
+        CrashReportMonitor.shared.markCleanExit()
     }
 
     /// HIG: "avoid relying on the presence of menu bar extras." If the user

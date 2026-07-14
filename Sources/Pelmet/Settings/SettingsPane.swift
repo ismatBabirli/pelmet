@@ -15,7 +15,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     static let detailWidth: CGFloat = 420
     /// Total window content height — sized so the tallest pane (General)
     /// fits scroll-free; panes scroll if they ever outgrow it.
-    static let contentHeight: CGFloat = 480
+    static let contentHeight: CGFloat = 560
 
     /// Panes offered for the current hardware — same gate as the
     /// context-menu entry in MenuBarManager: One-Click Access only exists

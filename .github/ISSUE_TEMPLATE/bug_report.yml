@@ -17,6 +17,14 @@ body:
         1. …
         2. …
   - type: input
+    id: version
+    attributes:
+      label: Pelmet version
+      description: Settings > About shows this; the "Report a Problem" button fills it in.
+      placeholder: e.g. 0.3.0 (123)
+    validations:
+      required: true
+  - type: input
     id: environment
     attributes:
       label: macOS version and Mac model

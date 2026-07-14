@@ -55,6 +55,25 @@ Pelmet places two items in your menu bar:
   window-geometry metadata — nothing that prompts for permissions or lights
   the screen-recording indicator.
 
+## Privacy
+
+Pelmet needs zero special permissions, has no accounts, and embeds no tracking
+SDKs. It makes two kinds of network calls, both under your control:
+
+- **Update checks** (Sparkle): asks you once before checking automatically.
+- **Anonymous usage ping**: one tiny event per day (app version, macOS version,
+  chip type, which Pelmet features are on) so we know how many people use Pelmet
+  and what to prioritize. No personal data, no menu bar contents, never anything
+  about the other apps you run; IP addresses are discarded on arrival. An in-app
+  notice appears before the first ping is ever sent. Turn it off in Settings,
+  with `defaults write com.ismatbabirli.Pelmet telemetryEnabled -bool NO`, or
+  with `DO_NOT_TRACK=1`.
+
+Every field is documented in [docs/TELEMETRY.md](docs/TELEMETRY.md), the sending
+code is one small file, and the aggregate numbers are public. Crash reports never
+leave your Mac: after a crash, Pelmet offers to open a prefilled GitHub issue
+that you review and submit yourself.
+
 ## Usage
 
 | Action | How |

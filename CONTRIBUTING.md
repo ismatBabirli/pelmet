@@ -62,14 +62,21 @@ geometry lives in `Sources/PelmetCore/`.
 | `../PelmetCore/ShelfContent.swift`, `ShelfPlacement.swift`, `TipPlacement.swift`, `ScreenCoordinates.swift` | Pure Shelf/tip content derivation and placement geometry |
 | `../PelmetCore/Activation/` | Pure activation planning: `ActivationPlanner`, `ActivationSession`, `StatusItemCorrelator`, `QuiescencePolicy` |
 
-Two ground rules:
+Three ground rules:
 
 1. **The zero-permission core is sacred.** The default experience must never
    require Screen Recording or Accessibility. Features that need a permission
    (like one-click access) are opt-in only.
 2. **Sparkle is the only dependency** — and only in the XcodeGen app bundle,
    behind `#if canImport(Sparkle)`; the plain SPM build stays dependency-free.
-   Think twice before adding another.
+   Think twice before adding another. (Telemetry is raw `URLSession`, not a new
+   dependency.)
+3. **Telemetry is frozen by documentation.** The daily ping sends the fields in
+   [docs/TELEMETRY.md](docs/TELEMETRY.md), nothing more. Any PR that adds or
+   changes a field must update that document and `CHANGELOG.md`, and must update
+   the schema test in `Tests/PelmetCoreTests` deliberately. Nothing from the
+   Shelf's app directory (other apps' names, icons, counts) may ever reach the
+   telemetry module.
 
 ## Code style
 

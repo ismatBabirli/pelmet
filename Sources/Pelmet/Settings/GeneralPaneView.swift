@@ -1,5 +1,6 @@
-import SwiftUI
+import PelmetCore
 import ServiceManagement
+import SwiftUI
 
 /// General pane: the core mental model, re-hide behavior, startup and
 /// shortcuts. This is the landing pane — Settings doubles as the escape
@@ -11,6 +12,12 @@ struct GeneralPaneView: View {
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
     @State private var autoCheckUpdates = UpdaterController.shared.automaticallyChecksForUpdates
+    @State private var telemetryEnabled = Preferences.telemetryEnabled
+    @State private var didResetInstallID = false
+    /// When set in the environment, DO_NOT_TRACK wins over the toggle.
+    private let doNotTrack = TelemetryGate.envFlagSet(
+        ProcessInfo.processInfo.environment["DO_NOT_TRACK"]
+    )
 
     var body: some View {
         Form {
@@ -66,6 +73,46 @@ struct GeneralPaneView: View {
                         UpdaterController.shared.checkForUpdates(nil)
                     }
                 }
+            }
+
+            // Always shown (honest even under `swift run`, where the send gate
+            // keeps it inert). The toggle routes through TelemetryManager so
+            // opting out also forgets the install ID.
+            Section {
+                Toggle("Share anonymous usage statistics", isOn: Binding(
+                    get: { telemetryEnabled && !doNotTrack },
+                    set: { enabled in
+                        telemetryEnabled = enabled
+                        TelemetryManager.shared.setEnabled(enabled)
+                    }
+                ))
+                .disabled(doNotTrack)
+
+                DisclosureGroup("What exactly is sent?") {
+                    // Rendered from the same builder used on the wire, so the
+                    // preview cannot drift from reality.
+                    Text(TelemetryManager.shared.currentPreviewJSON())
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Link("Full documentation", destination: AppLinks.telemetryDoc)
+                    Button(didResetInstallID ? "Install ID reset" : "Reset Install ID") {
+                        TelemetryManager.shared.resetInstallID()
+                        didResetInstallID = true
+                    }
+                    .disabled(didResetInstallID)
+                }
+            } header: {
+                Text("Privacy")
+            } footer: {
+                Text(doNotTrack
+                    ? "Disabled by the DO_NOT_TRACK environment variable."
+                    : "One anonymous ping per day: app version, macOS version, chip type, and "
+                        + "which Pelmet features are on. Never your menu bar contents or other "
+                        + "apps' names. IP addresses are discarded.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section {

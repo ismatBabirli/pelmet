@@ -308,6 +308,11 @@ final class MenuBarManager: NSObject {
             )
         }
         if toggleOK {
+            // After the welcome, before the one-click pitch: the privacy notice
+            // is the next thing a new user sees. Each call is gated on
+            // activePopover == nil and its own one-shot flag, so only one shows
+            // per pass; the chain re-fires when a popover closes.
+            OnboardingController.shared.maybeShowTelemetryNotice(toggle: toggleItem)
             OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
         }
     }

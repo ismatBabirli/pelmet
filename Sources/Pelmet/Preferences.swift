@@ -22,6 +22,13 @@ enum Preferences {
         static let didAutoPromptAccessibility = "didAutoPromptAccessibility"
         static let awaitingOneClickGrant = "awaitingOneClickGrant"
         static let settingsPane = "settingsPane"
+        static let telemetryEnabled = "telemetryEnabled"
+        static let didShowTelemetryNotice = "didShowTelemetryNotice"
+        static let telemetryNoticeShownAt = "telemetryNoticeShownAt"
+        static let telemetryInstallID = "telemetryInstallID"
+        static let telemetryLastHeartbeatDay = "telemetryLastHeartbeatDay"
+        static let lastSessionCleanExit = "lastSessionCleanExit"
+        static let crashPromptDisabled = "crashPromptDisabled"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -99,6 +106,64 @@ enum Preferences {
     static var awaitingOneClickGrant: Bool {
         get { UserDefaults.standard.bool(forKey: Keys.awaitingOneClickGrant) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.awaitingOneClickGrant) }
+    }
+
+    // MARK: - Telemetry (anonymous daily usage ping)
+
+    /// Opt-out: absent means true, so a fresh install shares stats after the
+    /// first-run notice. Nothing is sent until `didShowTelemetryNotice` is set,
+    /// so the default-true value stays inert until the user has been told. Set
+    /// only via `TelemetryManager.setEnabled`, never written from a view.
+    static var telemetryEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.telemetryEnabled) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.telemetryEnabled) }
+    }
+
+    /// The send gate's second factor: nothing is ever sent while this is false.
+    /// A consent fact, not onboarding, so `resetOnboardingFlags()` leaves it be.
+    static var didShowTelemetryNotice: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.didShowTelemetryNotice) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.didShowTelemetryNotice) }
+    }
+
+    /// When the notice was shown, for the "24h or next launch" cooling-off
+    /// before the very first send. nil until the notice is shown.
+    static var telemetryNoticeShownAt: Date? {
+        get { UserDefaults.standard.object(forKey: Keys.telemetryNoticeShownAt) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.telemetryNoticeShownAt) }
+    }
+
+    /// Random per-install UUID (PostHog `distinct_id`). Created lazily at the
+    /// first actual send, so a user who opts out at the notice never gets one.
+    /// Cleared on opt-out, regenerated on re-enable (a severable identity).
+    static var telemetryInstallID: String? {
+        get { UserDefaults.standard.string(forKey: Keys.telemetryInstallID) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.telemetryInstallID) }
+    }
+
+    /// UTC "yyyy-MM-dd" of the last successful heartbeat; nil until the first.
+    /// Idempotency across relaunches (one send per day).
+    static var telemetryLastHeartbeatDay: String? {
+        get { UserDefaults.standard.string(forKey: Keys.telemetryLastHeartbeatDay) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.telemetryLastHeartbeatDay) }
+    }
+
+    // MARK: - Crash reporting (local only)
+
+    /// Clean-exit sentinel: set false at launch, true in
+    /// `applicationWillTerminate`. Read at the next launch, a false value means
+    /// the previous session ended uncleanly. Absent means true so a brand-new
+    /// install is never treated as a crash.
+    static var lastSessionCleanExit: Bool {
+        get { UserDefaults.standard.object(forKey: Keys.lastSessionCleanExit) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.lastSessionCleanExit) }
+    }
+
+    /// User asked (via the post-crash alert's checkbox) never to be prompted
+    /// after future crashes. Crash detection still feeds the heartbeat boolean.
+    static var crashPromptDisabled: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.crashPromptDisabled) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.crashPromptDisabled) }
     }
 
     // MARK: - One-time onboarding flags

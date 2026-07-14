@@ -51,8 +51,12 @@ SwiftUI settings windows. Sandbox is intentionally OFF, hardened runtime ON, and
 
 - The zero-permission core is sacred: the default experience must never require
   Screen Recording or Accessibility; permissioned features are strictly opt-in.
-- No analytics, no accounts, no network calls — Sparkle update checks are the sole
-  exception. No new dependencies (Sparkle is the only one).
+- Network calls are limited to exactly two endpoints: Sparkle update checks and the
+  anonymous daily telemetry ping (`Sources/Pelmet/Telemetry/`, opt-out, schema frozen in
+  `docs/TELEMETRY.md`). Adding or changing any telemetry field requires updating
+  `docs/TELEMETRY.md` and `CHANGELOG.md` in the same PR. No accounts, no tracking SDKs,
+  no new dependencies (Sparkle is the only one; telemetry is raw `URLSession`). Crash
+  reports stay local: Pelmet only opens a prefilled GitHub issue the user submits.
 - Rationale and full list: `PROJECT.md` § "5. Non-Goals" and § "6. Technical Foundation".
 
 ## Etiquette
