@@ -143,6 +143,29 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         }
     }
 
+    /// One-time, informational (opt-out) notice that Pelmet sends an anonymous
+    /// daily usage ping. Shown after the welcome tip so a new user meets the
+    /// core concept first, and guarded so it never stacks on Sparkle's own
+    /// first-launch prompt. `needsFirstRunNotice` already screens out dev/debug
+    /// builds, DO_NOT_TRACK, and users who opted out. Burns on successful show,
+    /// like the other tips; the reporter's cooling-off gives the real opt-out
+    /// window before the first send.
+    func maybeShowTelemetryNotice(toggle: NSStatusItem) {
+        guard activePopover == nil,
+              Preferences.didShowToggleTip,
+              TelemetryManager.shared.needsFirstRunNotice,
+              NSApp.modalWindow == nil,
+              let button = toggle.button else { return }
+
+        guard present(on: button, content: { dismiss in
+            TelemetryNoticeView(
+                onTurnOff: { TelemetryManager.shared.setEnabled(false); dismiss() },
+                onOK: dismiss
+            )
+        }) else { return }
+        TelemetryManager.shared.recordNoticeShown()
+    }
+
     /// Settings → "Show Welcome Tips Again".
     func replayTips() {
         Preferences.resetOnboardingFlags()
@@ -190,16 +213,30 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         title: String, message: String, buttonTitle: String,
         on button: NSStatusBarButton, action: (() -> Void)? = nil
     ) -> Bool {
+        present(on: button) { dismiss in
+            TipView(title: title, message: message, buttonTitle: buttonTitle) {
+                action?()
+                dismiss()
+            }
+        }
+    }
+
+    /// Shared popover plumbing behind `show` and the telemetry notice. `content`
+    /// receives a `dismiss` closure that closes the popover. Returns false
+    /// (leaving the caller's once-only flag unburned for a retry on a later
+    /// confirmed snapshot) when the button can't anchor a popover or AppKit
+    /// declines.
+    private func present(
+        on button: NSStatusBarButton,
+        @ViewBuilder content: (@escaping () -> Void) -> some View
+    ) -> Bool {
         guard canAnchor(button) else { return false }
         let popover = NSPopover()
         popover.behavior = .semitransient
         popover.animates = !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         popover.delegate = self
         popover.contentViewController = NSHostingController(
-            rootView: TipView(title: title, message: message, buttonTitle: buttonTitle) { [weak popover] in
-                action?()
-                popover?.performClose(nil)
-            }
+            rootView: content { [weak popover] in popover?.performClose(nil) }
         )
         // Assigned before show(): with animates off, popoverDidShow (and the
         // placement fix-up, which reads these) fires synchronously inside it.
@@ -285,6 +322,36 @@ private struct TipView: View {
             HStack {
                 Spacer()
                 Button(buttonTitle, action: dismiss)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 320)
+    }
+}
+
+/// The first-run telemetry notice: two actions (Turn Off / OK) and a link to
+/// the full disclosure. Wider body than a tip because honesty needs room.
+private struct TelemetryNoticeView: View {
+    let onTurnOff: () -> Void
+    let onOK: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Anonymous usage statistics")
+                .font(.headline)
+            Text("Pelmet counts its installs by sending one tiny anonymous ping per day: "
+                + "app version, macOS version, chip type, and which Pelmet features are "
+                + "switched on. No names, no menu bar contents, and never anything about the "
+                + "other apps you run. IP addresses are discarded on arrival.")
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Link("See every field and the sending code", destination: AppLinks.telemetryDoc)
+                .font(.caption)
+            HStack {
+                Button("Turn Off", action: onTurnOff)
+                Spacer()
+                Button("OK", action: onOK)
                     .keyboardShortcut(.defaultAction)
             }
         }

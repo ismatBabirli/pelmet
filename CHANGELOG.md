@@ -7,13 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-19
+
 ### Added
 
+- **Anonymous usage statistics (opt-out)**: Pelmet now sends one tiny anonymous
+  event per day (app version, macOS version, chip type, and which Pelmet features
+  are on) to a US-hosted PostHog instance, so we finally know how many installs
+  exist and which features matter. Nothing is sent until an in-app notice has told
+  you about it, and the first ping waits at least until the next launch or 24
+  hours, whichever comes first. Turn it off any time in Settings, with
+  `defaults write com.ismatbabirli.Pelmet telemetryEnabled -bool NO`, or by setting
+  `DO_NOT_TRACK=1`. IP addresses are discarded, there are no names, no menu bar
+  contents, and never anything about the other apps you run. Every field is
+  documented in `docs/TELEMETRY.md`, alongside the one file of sending code.
+- **Crash follow-up, local only**: if Pelmet quit unexpectedly, the next launch
+  offers to open a prefilled GitHub issue with your Pelmet and macOS versions.
+  Crash reports stay on your Mac; you review and attach them yourself. A "Report a
+  Problem" button also lives in Settings > About.
 - **About settings pane**: a new About pane shows Pelmet's version and build,
   a button to copy the version for bug reports, and links to the GitHub repo,
   release notes, and issue tracker, alongside the MIT license. The chevron's
   right-click menu also shows the current version. A plain `swift run` dev
   build (which has no bundle) reads "Development build".
+
+### Fixed
+
+- The crash follow-up no longer reveals an old, unrelated crash report. An
+  unclean exit that leaves no fresh report (a Force Quit or `SIGKILL`) used to
+  surface the newest Pelmet report of any age; it now only reveals a report from
+  the last day.
+- The "Report a Problem" prefill no longer sends a `labels` query parameter,
+  which could make the prefilled GitHub issue fail to open for users without
+  repo triage access. The label is still applied by the issue template.
+- Overlapping daily heartbeat checks (for example a launch check and a wake
+  check) can no longer send two pings for the same day.
 
 ## [0.2.0] - 2026-07-13
 
@@ -71,6 +99,7 @@ First public release — the working MVP.
 - Requires **macOS 13 Ventura** or later.
 - The core hide/show experience needs **zero special permissions**.
 
-[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ismatBabirli/pelmet/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ismatBabirli/pelmet/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ismatBabirli/pelmet/releases/tag/v0.1.0

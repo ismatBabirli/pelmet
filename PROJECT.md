@@ -132,7 +132,7 @@ gracefully:
 - **No menu bar "styling"** (tints, borders) in early phases — Ice does this well; we stay focused
 - **No Screen Recording, ever** — the Shelf renders app icons/names, not captured pixels; the purple indicator and re-approval nags are exactly what users flee
 - **No Mac App Store initially** — the sandbox is incompatible with the Shelf; direct + Homebrew distribution instead
-- **No analytics, no accounts, no network calls** except Sparkle update checks
+- **No accounts, no tracking SDKs, no hidden network calls.** Pelmet talks to exactly two endpoints: Sparkle update checks and an optional anonymous daily usage ping (opt-out, announced in-app before the first send, every field documented in [docs/TELEMETRY.md](docs/TELEMETRY.md)). Crash reports never leave the Mac unless the user files one.
 
 ## 6. Technical Foundation
 
