@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Anonymous usage statistics (opt-out)**: Pelmet now sends one tiny anonymous
   event per day (app version, macOS version, chip type, and which Pelmet features
-  are on) to an EU-hosted PostHog instance, so we finally know how many installs
+  are on) to a US-hosted PostHog instance, so we finally know how many installs
   exist and which features matter. Nothing is sent until an in-app notice has told
   you about it, and the first ping waits at least until the next launch or 24
   hours, whichever comes first. Turn it off any time in Settings, with

@@ -18,11 +18,11 @@ final class TelemetryManager {
 
     /// PostHog project API key. This is a PUBLIC, write-only ingestion token
     /// (it can only send events, never read data back), so it is safe to embed
-    /// in open-source source. Swap the placeholder for the real key before
-    /// release; until then `isConfigured` is false and nothing is sent even in
-    /// a release build. The project must have "Discard client IP data" enabled.
-    private static let apiKey = "phc_REPLACE_WITH_POSTHOG_PROJECT_KEY"
-    private static let endpoint = URL(string: "https://eu.i.posthog.com/i/v0/e/")!
+    /// in open-source source. The "Pelmet" project on PostHog Cloud US has
+    /// "Discard client IP data" enabled. The `phc_REPLACE` sentinel below keeps
+    /// `isConfigured` false (and stops all sends) if the key is ever cleared.
+    private static let apiKey = "phc_tpzRsgpnvLvi8WZrY8N6XJw3kaNNNsXQJ6qAnjS9XBqS"
+    private static let endpoint = URL(string: "https://us.i.posthog.com/i/v0/e/")!
 
     private static var isConfigured: Bool { !apiKey.hasPrefix("phc_REPLACE") }
 

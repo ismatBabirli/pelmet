@@ -7,7 +7,7 @@
 - Data: app version, macOS version (major.minor), `arm64` or `x86_64`, notch
   yes/no, a handful of feature on/off booleans, whether the previous session
   ended cleanly, and a random resettable install ID.
-- Destination: PostHog Cloud EU (Frankfurt). IP addresses are discarded.
+- Destination: PostHog Cloud US. IP addresses are discarded.
 - Off switches: the Settings toggle, one `defaults` command, or `DO_NOT_TRACK=1`.
 
 ## Why we collect anything
@@ -21,7 +21,7 @@ a crash rate. That is why there is nothing else here.
 ## Exactly what is sent
 
 A single `heartbeat` event, at most once per UTC day, as a plain HTTPS `POST` to
-`https://eu.i.posthog.com/i/v0/e/`:
+`https://us.i.posthog.com/i/v0/e/`:
 
 ```json
 {
@@ -98,7 +98,7 @@ telemetry off forgets the ID entirely.
 
 ## Where the data goes
 
-PostHog Cloud EU, hosted in Frankfurt. The request is a plain HTTPS `POST`; there
+PostHog Cloud US. The request is a plain HTTPS `POST`; there
 is no SDK. The API key embedded in the source is a public, write-only ingestion
 token: it can only send events, never read anything back. Events are flagged so
 PostHog creates no person profiles, and the project is configured to discard
@@ -123,7 +123,7 @@ The dashboard built from this data is shared publicly (link to be added with the
    the `defaults` command above.
 
 Also: `swift run` and debug builds never send anything, and blocking
-`eu.i.posthog.com` (Little Snitch, Pi-hole, a firewall) blocks it entirely and
+`us.i.posthog.com` (Little Snitch, Pi-hole, a firewall) blocks it entirely and
 silently.
 
 ## Crash reports stay on your Mac

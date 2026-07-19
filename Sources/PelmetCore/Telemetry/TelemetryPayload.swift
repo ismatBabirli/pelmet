@@ -137,7 +137,7 @@ public struct TelemetryPayload: Equatable {
         ]
     }
 
-    /// The request body for `POST https://eu.i.posthog.com/i/v0/e/`.
+    /// The request body for `POST https://us.i.posthog.com/i/v0/e/`.
     /// `.sortedKeys` makes the bytes deterministic (testable, cache-friendly).
     public func postHogBody(apiKey: String) throws -> Data {
         try JSONSerialization.data(
