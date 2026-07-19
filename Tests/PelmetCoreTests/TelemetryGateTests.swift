@@ -11,7 +11,8 @@ struct TelemetryGateTests {
         isDevelopmentBuild: Bool = false,
         isDebugBuild: Bool = false,
         doNotTrack: String? = nil,
-        disableOverride: String? = nil
+        disableOverride: String? = nil,
+        forceOverride: String? = nil
     ) -> TelemetryGate.Inputs {
         TelemetryGate.Inputs(
             enabledPreference: enabledPreference,
@@ -19,7 +20,8 @@ struct TelemetryGateTests {
             isDevelopmentBuild: isDevelopmentBuild,
             isDebugBuild: isDebugBuild,
             doNotTrack: doNotTrack,
-            disableOverride: disableOverride
+            disableOverride: disableOverride,
+            forceOverride: forceOverride
         )
     }
 
@@ -75,5 +77,28 @@ struct TelemetryGateTests {
 
     @Test func testNoticeShownButDisabledStaysInactive() {
         #expect(!TelemetryGate.isActive(clear(enabledPreference: false, noticeShown: true)))
+    }
+
+    @Test func testForceOverrideUnlocksDevAndDebugAndNotice() {
+        // A local `swift run` (dev + debug build, no notice shown) sends when
+        // PELMET_FORCE_TELEMETRY is set.
+        #expect(TelemetryGate.isActive(clear(
+            noticeShown: false,
+            isDevelopmentBuild: true,
+            isDebugBuild: true,
+            forceOverride: "1"
+        )))
+    }
+
+    @Test func testForceOverrideNeverBeatsExplicitOptOut() {
+        // Force yields to DO_NOT_TRACK, the disable override, and an off preference.
+        #expect(!TelemetryGate.isActive(clear(isDebugBuild: true, doNotTrack: "1", forceOverride: "1")))
+        #expect(!TelemetryGate.isActive(clear(isDebugBuild: true, disableOverride: "1", forceOverride: "1")))
+        #expect(!TelemetryGate.isActive(clear(enabledPreference: false, isDebugBuild: true, forceOverride: "1")))
+    }
+
+    @Test func testForceOverrideUnsetOrZeroDoesNotUnlock() {
+        #expect(!TelemetryGate.isActive(clear(isDebugBuild: true, forceOverride: "0")))
+        #expect(!TelemetryGate.isActive(clear(isDebugBuild: true, forceOverride: nil)))
     }
 }

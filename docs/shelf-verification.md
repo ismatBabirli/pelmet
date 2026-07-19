@@ -82,6 +82,11 @@ On a notched Mac:
 22. **Dry run, nothing sent.** `PELMET_DEBUG_TELEMETRY=verbose swift run` → prints
     the gate decision and the exact JSON payload to stdout, and `active=false`
     (a `swift run` dev build is inert). Confirms the payload shape without a send.
+    To actually send one from local for an end-to-end check, add
+    `PELMET_FORCE_TELEMETRY=1` (developer hatch: unlocks the dev/debug/notice gates
+    only, never beats `DO_NOT_TRACK`, `PELMET_DISABLE_TELEMETRY`, or an off
+    preference). The day is recorded on success, so re-sending the same day needs
+    `defaults delete com.ismatbabirli.Pelmet telemetryLastHeartbeatDay` first.
 23. **Kill switch.** `PELMET_DISABLE_TELEMETRY=1` or `DO_NOT_TRACK=1` → the verbose
     trace shows `active=false`; the Settings toggle renders off and disabled under
     `DO_NOT_TRACK`.

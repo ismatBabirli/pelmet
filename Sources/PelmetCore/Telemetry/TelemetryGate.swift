@@ -21,6 +21,11 @@ public enum TelemetryGate {
         public let doNotTrack: String?
         /// The `PELMET_DISABLE_TELEMETRY` QA override, if set.
         public let disableOverride: String?
+        /// The `PELMET_FORCE_TELEMETRY` developer override, if set. Unlocks the
+        /// dev-build, debug-build, and notice gates so a local `swift run` can
+        /// send a real heartbeat for testing. It never beats an explicit opt-out
+        /// (`DO_NOT_TRACK`, `PELMET_DISABLE_TELEMETRY`, or `enabledPreference`).
+        public let forceOverride: String?
 
         public init(
             enabledPreference: Bool,
@@ -28,7 +33,8 @@ public enum TelemetryGate {
             isDevelopmentBuild: Bool,
             isDebugBuild: Bool,
             doNotTrack: String?,
-            disableOverride: String?
+            disableOverride: String?,
+            forceOverride: String? = nil
         ) {
             self.enabledPreference = enabledPreference
             self.noticeShown = noticeShown
@@ -36,17 +42,20 @@ public enum TelemetryGate {
             self.isDebugBuild = isDebugBuild
             self.doNotTrack = doNotTrack
             self.disableOverride = disableOverride
+            self.forceOverride = forceOverride
         }
     }
 
     /// May a heartbeat be sent right now?
     public static func isActive(_ i: Inputs) -> Bool {
-        i.enabledPreference
-            && i.noticeShown
+        // Explicit opt-outs always win, even over the force override.
+        if envFlagSet(i.doNotTrack) || envFlagSet(i.disableOverride) { return false }
+        guard i.enabledPreference else { return false }
+        // Developer/QA hatch: send from a dev or debug build without the notice.
+        if envFlagSet(i.forceOverride) { return true }
+        return i.noticeShown
             && !i.isDevelopmentBuild
             && !i.isDebugBuild
-            && !envFlagSet(i.doNotTrack)
-            && !envFlagSet(i.disableOverride)
     }
 
     /// Should the first-run notice be offered? True only when everything except

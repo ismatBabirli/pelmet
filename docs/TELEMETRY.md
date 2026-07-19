@@ -122,7 +122,8 @@ The dashboard built from this data is shared publicly (link to be added with the
    do not inherit your shell profile, so use `launchctl setenv DO_NOT_TRACK 1` or
    the `defaults` command above.
 
-Also: `swift run` and debug builds never send anything, and blocking
+Also: `swift run` and debug builds never send anything (unless a developer
+deliberately sets `PELMET_FORCE_TELEMETRY` to test the send path), and blocking
 `us.i.posthog.com` (Little Snitch, Pi-hole, a firewall) blocks it entirely and
 silently.
 

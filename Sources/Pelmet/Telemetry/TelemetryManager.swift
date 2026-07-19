@@ -194,7 +194,8 @@ final class TelemetryManager {
             isDevelopmentBuild: AppVersionInfo.current.isDevelopmentBuild,
             isDebugBuild: Self.isDebugBuild,
             doNotTrack: env["DO_NOT_TRACK"],
-            disableOverride: env["PELMET_DISABLE_TELEMETRY"]
+            disableOverride: env["PELMET_DISABLE_TELEMETRY"],
+            forceOverride: env["PELMET_FORCE_TELEMETRY"]
         )
     }
 
