@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   right-click menu also shows the current version. A plain `swift run` dev
   build (which has no bundle) reads "Development build".
 
+### Fixed
+
+- The crash follow-up no longer reveals an old, unrelated crash report. An
+  unclean exit that leaves no fresh report (a Force Quit or `SIGKILL`) used to
+  surface the newest Pelmet report of any age; it now only reveals a report from
+  the last day.
+- The "Report a Problem" prefill no longer sends a `labels` query parameter,
+  which could make the prefilled GitHub issue fail to open for users without
+  repo triage access. The label is still applied by the issue template.
+- Overlapping daily heartbeat checks (for example a launch check and a wake
+  check) can no longer send two pings for the same day.
+
 ## [0.2.0] - 2026-07-13
 
 ### Added

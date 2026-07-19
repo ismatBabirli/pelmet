@@ -39,6 +39,12 @@ final class TelemetryManager {
     /// True only if the first-run notice was shown during THIS process, which
     /// arms the cooling-off hold on the very first send.
     private var noticeShownThisSession = false
+    /// The UTC day of a send that is currently in flight, reserved synchronously
+    /// on the main thread before the request starts. The persisted last-sent day
+    /// only updates when the request completes, so without this two overlapping
+    /// `checkNow()` calls (e.g. the launch check and a wake) could both see the
+    /// day as due and double-send. Only ever touched on the main thread.
+    private var inFlightHeartbeatDay: String?
 
     private lazy var session: URLSession = {
         let config = URLSessionConfiguration.ephemeral // no cookies, no cache
@@ -141,7 +147,8 @@ final class TelemetryManager {
             fflush(stdout)
         }
 
-        guard Self.isConfigured, active, coolingElapsed, due else { return }
+        guard Self.isConfigured, active, coolingElapsed, due,
+              inFlightHeartbeatDay != HeartbeatSchedule.dayKey(for: now) else { return }
         send(makePayload(distinctID: installIDForSend()))
     }
 
@@ -152,18 +159,28 @@ final class TelemetryManager {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
 
+        // Reserve the day synchronously (on main) before the request starts, so a
+        // second checkNow() during the round trip sees it as taken. On completion,
+        // a success promotes it to the persisted last-sent day; either way the
+        // reservation is released so the next day can send.
         let day = HeartbeatSchedule.dayKey(for: payload.timestamp)
+        inFlightHeartbeatDay = day
         session.dataTask(with: request) { [weak self] _, response, error in
-            guard error == nil,
-                  let http = response as? HTTPURLResponse,
-                  (200 ..< 300).contains(http.statusCode) else {
-                // Fail totally silently: a blocked endpoint (Little Snitch,
-                // Pi-hole) is a no-op, and the next tick is the only retry.
-                self?.log.debug("heartbeat send did not complete; will retry next tick")
-                return
+            let succeeded = error == nil
+                && (response as? HTTPURLResponse).map { (200 ..< 300).contains($0.statusCode) } ?? false
+            DispatchQueue.main.async {
+                if succeeded {
+                    Preferences.telemetryLastHeartbeatDay = day
+                    self?.log.debug("heartbeat sent")
+                } else {
+                    // Fail totally silently: a blocked endpoint (Little Snitch,
+                    // Pi-hole) is a no-op, and the next tick is the only retry.
+                    self?.log.debug("heartbeat send did not complete; will retry next tick")
+                }
+                if self?.inFlightHeartbeatDay == day {
+                    self?.inFlightHeartbeatDay = nil
+                }
             }
-            Preferences.telemetryLastHeartbeatDay = day
-            self?.log.debug("heartbeat sent")
         }.resume()
     }
 

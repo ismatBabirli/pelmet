@@ -23,6 +23,14 @@ final class CrashReportMonitor {
 
     private var signalSources: [DispatchSourceSignal] = []
 
+    /// How recent a `.ips` must be to count as the report for the crash we are
+    /// following up on. An unclean exit is broader than "left a report": a Force
+    /// Quit, `SIGKILL`, or power loss ends the session uncleanly yet writes no
+    /// `.ips`, and without this bound the newest match could be a stale, unrelated
+    /// report from a crash weeks ago. Pelmet is relaunched soon after a crash, so
+    /// 24h comfortably covers a genuine report while excluding old cruft.
+    private let maxCrashReportAge: TimeInterval = 24 * 3600
+
     private init() {}
 
     // MARK: - Lifecycle
@@ -106,8 +114,10 @@ final class CrashReportMonitor {
     }
 
     /// Newest `Pelmet-*.ips` in the top level of DiagnosticReports (aged-out
-    /// reports move to a `Retired/` subfolder, which we skip). Read failures
-    /// degrade to nil: the issue still opens, just without the Finder reveal.
+    /// reports move to a `Retired/` subfolder, which we skip), provided it is
+    /// recent enough to belong to the crash we are following up on. Read failures
+    /// and a too-old newest report both degrade to nil: the issue still opens,
+    /// just without the Finder reveal.
     private func newestCrashReport() -> URL? {
         let dir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Logs/DiagnosticReports", isDirectory: true)
@@ -117,9 +127,17 @@ final class CrashReportMonitor {
             options: [.skipsHiddenFiles, .skipsSubdirectoryDescendants]
         ) else { return nil }
 
-        return entries
-            .filter { $0.lastPathComponent.hasPrefix("Pelmet-") && $0.pathExtension == "ips" }
-            .max { modificationDate($0) < modificationDate($1) }
+        guard let newest = entries
+            .filter({ $0.lastPathComponent.hasPrefix("Pelmet-") && $0.pathExtension == "ips" })
+            .max(by: { modificationDate($0) < modificationDate($1) })
+        else { return nil }
+
+        // An unclean exit without a fresh report (Force Quit, SIGKILL) must not
+        // surface an old, unrelated one.
+        guard Date().timeIntervalSince(modificationDate(newest)) <= maxCrashReportAge else {
+            return nil
+        }
+        return newest
     }
 
     private func modificationDate(_ url: URL) -> Date {
@@ -129,12 +147,13 @@ final class CrashReportMonitor {
 
     /// A prefilled bug-report form URL. Query keys match the field `id`s in
     /// `.github/ISSUE_TEMPLATE/bug_report.yml`; the "what happened" field stays
-    /// empty for the user to fill.
+    /// empty for the user to fill. No `labels` item: the template already applies
+    /// `bug`, and a `labels` query param requires repo triage access, so passing
+    /// it would make the prefill fail for users who lack it.
     private func issueURL() -> URL {
         var components = URLComponents(url: AppLinks.issues, resolvingAgainstBaseURL: false)
         components?.queryItems = [
             URLQueryItem(name: "template", value: "bug_report.yml"),
-            URLQueryItem(name: "labels", value: "bug"),
             URLQueryItem(name: "version", value: AppVersionInfo.current.displayValue),
             URLQueryItem(name: "environment", value: Self.environmentDescription),
         ]
