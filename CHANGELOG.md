@@ -18,8 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `defaults write com.ismatbabirli.Pelmet telemetryEnabled -bool NO`, or by setting
   `DO_NOT_TRACK=1`. IP addresses are discarded, there are no names, no menu bar
   contents, and never anything about the other apps you run. Every field is
-  documented in `docs/TELEMETRY.md`, which also links the public dashboard and the
-  one file of sending code.
+  documented in `docs/TELEMETRY.md`, alongside the one file of sending code.
 - **Crash follow-up, local only**: if Pelmet quit unexpectedly, the next launch
   offers to open a prefilled GitHub issue with your Pelmet and macOS versions.
   Crash reports stay on your Mac; you review and attach them yourself. A "Report a

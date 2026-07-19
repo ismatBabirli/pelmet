@@ -108,11 +108,6 @@ client IPs.
 
 Raw events are deleted after at most 12 months. We work from aggregates.
 
-## Public numbers
-
-The dashboard built from this data is shared publicly (link to be added with the
-0.3.0 release), so you can see exactly what we see.
-
 ## How to turn it off
 
 1. **Settings > General > Privacy > "Share anonymous usage statistics".**
