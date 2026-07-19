@@ -30,7 +30,7 @@ jobs:
       # workflow_dispatch run can prove the build works before secrets exist.
       DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run && 'true' || 'false' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Resolve version
         id: v
