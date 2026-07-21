@@ -139,7 +139,9 @@ first time — but you still must flip on Pages.)
 ## Cutting a release
 
 ```bash
-# 1. Update the changelog (move Unreleased → the new version).
+# 1. Update the changelog (move Unreleased → an exact SemVer heading).
+#    This entry is bundled for the offline What's New window, so it must exist
+#    before the tag is pushed. The release workflow rejects a missing entry.
 $EDITOR CHANGELOG.md
 
 # 2. Tag and push. The workflow does the rest.
@@ -149,7 +151,10 @@ git push origin v0.1.0
 
 Watch the run under the repo's **Actions** tab. When it's green you'll have a
 GitHub Release with the `.dmg`/`.zip`, and `brew upgrade --cask pelmet` will pick
-up the new version.
+up the new version. The workflow also verifies that `CHANGELOG.md` is present in
+`Pelmet.app/Contents/Resources`; users who update will see that version's entry
+locally even when they are offline. If they skipped releases, Pelmet shows every
+entry newer than the last one they dismissed.
 
 ## Testing the build without secrets
 

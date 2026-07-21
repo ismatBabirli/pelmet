@@ -45,8 +45,11 @@ struct AboutPaneView: View {
             }
 
             Section {
+                Button("What's New…") {
+                    WhatsNewWindowController.shared.showManually()
+                }
                 Link("View on GitHub", destination: AppLinks.repo)
-                Link("Release Notes", destination: AppLinks.releases)
+                Link("Full Changelog", destination: AppLinks.changelog)
                 // Opens a GitHub issue prefilled with the version and
                 // environment; the user writes and submits it themselves.
                 Button("Report a Problem…") {

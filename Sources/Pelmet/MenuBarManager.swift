@@ -286,6 +286,13 @@ final class MenuBarManager: NSObject {
     /// Called on every confirmed snapshot and again when a tip closes (the
     /// tips chain: divider → toggle → count education).
     func reapplyOnboardingChecks() {
+        // Launch surfaces are serialized: release notes first, then a possible
+        // crash alert, then anchored onboarding. The dismissal paths re-run
+        // this method, so returning here never starves a one-time presenter.
+        guard !WhatsNewWindowController.shared.isPendingOrVisible,
+              NSApp.modalWindow == nil
+        else { return }
+
         // The welcome and the one-click offer are layout-independent, so they
         // still run before any classification confirms (a busy just-logged-in
         // bar may never settle). Swallowed-education needs a real count.
