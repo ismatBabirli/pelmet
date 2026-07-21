@@ -89,6 +89,23 @@ final class CrashReportMonitor {
     }
 
     private func presentCrashPrompt() {
+        // Release notes are already on screen (or waiting for Sparkle), so queue
+        // this more disruptive modal rather than stacking launch surfaces.
+        if WhatsNewWindowController.shared.isPendingOrVisible {
+            WhatsNewWindowController.shared.performAfterPresentation { [weak self] in
+                self?.presentCrashPrompt()
+            }
+            return
+        }
+        // Sparkle can own a first-launch modal. Wait for it as well; only one
+        // retry is scheduled by each invocation.
+        guard NSApp.modalWindow == nil else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.presentCrashPrompt()
+            }
+            return
+        }
+
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
         alert.messageText = "Pelmet quit unexpectedly last time"
@@ -102,6 +119,11 @@ final class CrashReportMonitor {
         alert.suppressionButton?.title = "Don't offer this after future crashes"
 
         let response = alert.runModal()
+        // Any pending onboarding was gated by NSApp.modalWindow. Re-run it now
+        // that the alert has left the modal session.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            MenuBarManager.shared.reapplyOnboardingChecks()
+        }
         if alert.suppressionButton?.state == .on {
             Preferences.crashPromptDisabled = true
         }

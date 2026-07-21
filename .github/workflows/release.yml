@@ -44,6 +44,35 @@ jobs:
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
           echo "Building version $VERSION (dry_run=$DRY_RUN)"
 
+      - name: Validate versioned changelog entry
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          SEMVER_RE='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if [[ ! "$VERSION" =~ $SEMVER_RE ]]; then
+            echo "Release version is not valid Semantic Versioning: $VERSION"
+            exit 1
+          fi
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE="${VERSION#*-}"
+            PRERELEASE="${PRERELEASE%%+*}"
+            IFS='.' read -r -a IDENTIFIERS <<< "$PRERELEASE"
+            for IDENTIFIER in "${IDENTIFIERS[@]}"; do
+              if [[ "$IDENTIFIER" =~ ^[0-9]+$ && ${#IDENTIFIER} -gt 1 && "$IDENTIFIER" == 0* ]]; then
+                echo "Numeric prerelease identifiers cannot have leading zeroes: $IDENTIFIER"
+                exit 1
+              fi
+            done
+          fi
+          if ! awk -v prefix="## [$VERSION]" '
+            $0 == prefix || index($0, prefix " - ") == 1 { found = 1 }
+            END { exit(found ? 0 : 1) }
+          ' CHANGELOG.md; then
+            echo "CHANGELOG.md has no exact version heading for $VERSION"
+            echo "Move Unreleased changes under ## [$VERSION] - YYYY-MM-DD before tagging."
+            exit 1
+          fi
+
       - name: Pin version into project.yml
         env:
           VERSION: ${{ steps.v.outputs.version }}
@@ -69,6 +98,11 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
           echo "APP=$PWD/build/Build/Products/Release/Pelmet.app" >> "$GITHUB_ENV"
+
+      - name: Verify bundled changelog
+        run: |
+          test -s "$APP/Contents/Resources/CHANGELOG.md"
+          grep -F "## [${{ steps.v.outputs.version }}]" "$APP/Contents/Resources/CHANGELOG.md"
 
       # ---- Dry run stops here: publish the unsigned .app for inspection ----
       - name: Upload unsigned app (dry run)

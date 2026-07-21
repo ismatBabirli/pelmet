@@ -59,4 +59,9 @@ jobs:
             -scheme Pelmet \
             -configuration Debug \
             -destination 'platform=macOS' \
+            -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
+      - name: Verify bundled changelog
+        run: |
+          APP="$PWD/build/Build/Products/Debug/Pelmet.app"
+          test -s "$APP/Contents/Resources/CHANGELOG.md"

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A native **What's New** window now appears once after each app update. It uses
+  the changelog bundled with the app, includes every release skipped since the
+  last acknowledged version, and links to the full changelog on GitHub. New
+  installs start silently, while existing users see the feature's first release.
+
 ## [0.3.1] - 2026-07-21
 
 ### Fixed

@@ -29,6 +29,7 @@ enum Preferences {
         static let telemetryLastHeartbeatDay = "telemetryLastHeartbeatDay"
         static let lastSessionCleanExit = "lastSessionCleanExit"
         static let crashPromptDisabled = "crashPromptDisabled"
+        static let lastAcknowledgedWhatsNewVersion = "lastAcknowledgedWhatsNewVersion"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -164,6 +165,24 @@ enum Preferences {
     static var crashPromptDisabled: Bool {
         get { UserDefaults.standard.bool(forKey: Keys.crashPromptDisabled) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.crashPromptDisabled) }
+    }
+
+    // MARK: - What's New
+
+    /// Marketing version whose automatic release-notes window the user last
+    /// dismissed. A missing value is interpreted using whether this app domain
+    /// existed before launch setup mutated it (fresh install vs feature rollout).
+    static var lastAcknowledgedWhatsNewVersion: String? {
+        get { UserDefaults.standard.string(forKey: Keys.lastAcknowledgedWhatsNewVersion) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.lastAcknowledgedWhatsNewVersion) }
+    }
+
+    /// Must be sampled before menu setup writes status-item positions. A real
+    /// bundled install has a bundle identifier; `swift run` does not and is
+    /// intentionally treated as a fresh development launch.
+    static var hasPersistentApplicationPreferences: Bool {
+        guard let bundleIdentifier = Bundle.main.bundleIdentifier else { return false }
+        return UserDefaults.standard.persistentDomain(forName: bundleIdentifier)?.isEmpty == false
     }
 
     // MARK: - One-time onboarding flags

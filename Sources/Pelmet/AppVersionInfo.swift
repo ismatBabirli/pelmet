@@ -30,7 +30,7 @@ enum AppVersionInfo {
 /// compare links already in `CHANGELOG.md`; GitHub is case-insensitive on it.
 enum AppLinks {
     static let repo = URL(string: "https://github.com/ismatBabirli/pelmet")!
-    static let releases = URL(string: "https://github.com/ismatBabirli/pelmet/releases")!
+    static let changelog = URL(string: "https://github.com/ismatBabirli/pelmet/blob/main/CHANGELOG.md")!
     static let issues = URL(string: "https://github.com/ismatBabirli/pelmet/issues/new")!
     /// Full field-by-field telemetry disclosure. Linked from the first-run
     /// notice and the Settings Privacy section.

@@ -17,6 +17,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // Sample the app domain before menu setup seeds status-item positions.
+        // That is the only reliable way to distinguish a truly fresh install
+        // from an existing user receiving the first What's New-enabled release.
+        let hadExistingPreferences = Preferences.hasPersistentApplicationPreferences
+        WhatsNewWindowController.shared.prepareAutomaticPresentation(
+            hadExistingPreferences: hadExistingPreferences
+        )
+
         MenuBarManager.shared.setUp()
 
         // Start Sparkle (bundled .app only). Sparkle asks the user once on
@@ -43,6 +51,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let registration = HotkeyManager.shared.register()
 
         printStartupBanner(hotkeys: registration)
+
+        // Let applicationDidFinishLaunching return before taking focus. The
+        // controller waits if Sparkle happens to own a modal at this point.
+        DispatchQueue.main.async {
+            WhatsNewWindowController.shared.presentPreparedIfNeeded()
+        }
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {

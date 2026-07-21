@@ -35,6 +35,9 @@ targets:
     sources:
       - Sources/Pelmet
       - Resources/Assets.xcassets
+      # Offline source of truth for the post-update What's New window.
+      - path: CHANGELOG.md
+        buildPhase: resources
     info:
       path: Sources/Pelmet/Info.plist
       properties:
