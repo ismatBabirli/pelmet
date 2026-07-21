@@ -54,9 +54,9 @@ final class MenuBarManager: NSObject {
     private var toggleRescueAttempts = 0
     private var lastToggleRescue = Date.distantPast
 
-    /// One-shot fallback so first-run onboarding isn't hostage to a confirmed
+    /// One-shot fallback so pending onboarding isn't hostage to a confirmed
     /// layout that a busy bar may never produce.
-    private var firstRunWelcomeTimer: Timer?
+    private var onboardingFallbackTimer: Timer?
 
     /// The Shelf's seam to the opt-in activation machinery. Always present;
     /// degrades honestly when the Accessibility grant is absent.
@@ -137,17 +137,20 @@ final class MenuBarManager: NSObject {
         }
 
         NotchLayoutMonitor.shared.requestMeasurement(reason: .launch)
-        armFirstRunWelcomeFallback()
+        armOnboardingFallback()
     }
 
     /// If the layout never settles into a confirmed classification, `apply()`
-    /// never fires and onboarding would never run. After a short delay, drive
-    /// the checks directly — `maybeShowLaunchTips`/`maybeOfferOneClick` are
-    /// layout-independent and the `didShowToggleTip`/`didOfferOneClick` gates
-    /// keep this idempotent with the confirmed path.
-    private func armFirstRunWelcomeFallback() {
-        guard !Preferences.didShowToggleTip else { return }
-        firstRunWelcomeTimer = Timer.scheduledTimer(
+    /// never fires and pending onboarding would never run. This includes an
+    /// existing user who completed the welcome before a later release added the
+    /// telemetry notice. The presenters' persisted gates keep the fallback
+    /// idempotent with the confirmed path.
+    private func armOnboardingFallback() {
+        guard OnboardingCheckPlan.shouldArmFallback(
+            welcomeTipShown: Preferences.didShowToggleTip,
+            telemetryNoticeNeeded: TelemetryManager.shared.needsFirstRunNotice
+        ) else { return }
+        onboardingFallbackTimer = Timer.scheduledTimer(
             withTimeInterval: 4, repeats: false
         ) { [weak self] _ in
             self?.reapplyOnboardingChecks()
@@ -283,7 +286,6 @@ final class MenuBarManager: NSObject {
     /// Called on every confirmed snapshot and again when a tip closes (the
     /// tips chain: divider → toggle → count education).
     func reapplyOnboardingChecks() {
-        guard !isCollapsed else { return }
         // The welcome and the one-click offer are layout-independent, so they
         // still run before any classification confirms (a busy just-logged-in
         // bar may never settle). Swallowed-education needs a real count.
@@ -291,13 +293,21 @@ final class MenuBarManager: NSObject {
         // Toggle-anchored tips wait for a visible toggle — a popover anchored
         // to a notch-swallowed or just-recreated button shows detached.
         let toggleOK = classification?.toggleVisible ?? true
-        OnboardingController.shared.maybeShowLaunchTips(
-            separator: separatorItem,
-            toggle: toggleItem,
-            separatorVisible: classification?.separatorHealth == .visible,
+        let plan = OnboardingCheckPlan(
+            isCollapsed: isCollapsed,
+            hasClassification: classification != nil,
             toggleVisible: toggleOK
         )
-        if let classification, toggleOK {
+
+        if plan.attemptLaunchTips {
+            OnboardingController.shared.maybeShowLaunchTips(
+                separator: separatorItem,
+                toggle: toggleItem,
+                separatorVisible: classification?.separatorHealth == .visible,
+                toggleVisible: toggleOK
+            )
+        }
+        if plan.attemptLayoutEducation, let classification {
             OnboardingController.shared.maybeShowSwallowedEducation(
                 count: classification.swallowedCount,
                 toggle: toggleItem
@@ -307,12 +317,13 @@ final class MenuBarManager: NSObject {
                 toggle: toggleItem
             )
         }
-        if toggleOK {
-            // After the welcome, before the one-click pitch: the privacy notice
-            // is the next thing a new user sees. Each call is gated on
-            // activePopover == nil and its own one-shot flag, so only one shows
-            // per pass; the chain re-fires when a popover closes.
+        // After the welcome, before the one-click pitch: the privacy notice is
+        // the next thing a new user sees. For an existing user it also runs
+        // while collapsed, because the notice anchors to the visible toggle.
+        if plan.attemptTelemetryNotice {
             OnboardingController.shared.maybeShowTelemetryNotice(toggle: toggleItem)
+        }
+        if plan.attemptOneClickOffer {
             OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
         }
     }
