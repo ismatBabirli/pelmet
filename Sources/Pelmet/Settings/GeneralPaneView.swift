@@ -7,6 +7,7 @@ import SwiftUI
 /// hatch when the user can't find the chevron (see AppDelegate reopen).
 struct GeneralPaneView: View {
 
+    @ObservedObject private var updater = UpdaterController.shared
     @AppStorage(Preferences.Keys.autoRehide) private var autoRehide = true
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
@@ -60,17 +61,21 @@ struct GeneralPaneView: View {
             // Sparkle owns the "check automatically" preference (its own
             // defaults, no Preferences key). Hidden under `swift run`, where
             // Sparkle is absent and the updater can't run without a bundle.
-            if UpdaterController.shared.isAvailable {
+            if updater.isAvailable {
                 Section("Software Update") {
                     Toggle("Automatically check for updates", isOn: Binding(
                         get: { autoCheckUpdates },
                         set: { enabled in
                             autoCheckUpdates = enabled
-                            UpdaterController.shared.automaticallyChecksForUpdates = enabled
+                            updater.automaticallyChecksForUpdates = enabled
                         }
                     ))
-                    Button("Check for Updates…") {
-                        UpdaterController.shared.checkForUpdates(nil)
+                    Text(updater.status.settingsText)
+                        .font(.caption)
+                        .foregroundStyle(updater.status == .failed ? Color.red : Color.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(updater.availableVersion == nil ? "Check for Updates…" : "Review Update…") {
+                        updater.checkForUpdates(nil)
                     }
                 }
             }

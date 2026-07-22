@@ -104,6 +104,25 @@ jobs:
           test -s "$APP/Contents/Resources/CHANGELOG.md"
           grep -F "## [${{ steps.v.outputs.version }}]" "$APP/Contents/Resources/CHANGELOG.md"
 
+      - name: Verify app update configuration
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+          BUILD: ${{ github.run_number }}
+        run: |
+          INFO_PLIST="$APP/Contents/Info.plist"
+          plutil -lint "$INFO_PLIST"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$INFO_PLIST")" = "$VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$INFO_PLIST")" = "$BUILD"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$INFO_PLIST")" = \
+            "https://ismatbabirli.github.io/pelmet/appcast.xml"
+          test -n "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$INFO_PLIST")"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SUScheduledCheckInterval' "$INFO_PLIST")" = "86400"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SUAllowsAutomaticUpdates' "$INFO_PLIST")" = "false"
+          if /usr/libexec/PlistBuddy -c 'Print :SUEnableAutomaticChecks' "$INFO_PLIST" >/dev/null 2>&1; then
+            echo "SUEnableAutomaticChecks must stay unset so Sparkle asks for consent."
+            exit 1
+          fi
+
       # ---- Dry run stops here: publish the unsigned .app for inspection ----
       - name: Upload unsigned app (dry run)
         if: env.DRY_RUN == 'true'
@@ -278,6 +297,16 @@ jobs:
           EOF
           fi
 
+          # Refuse to publish onto a malformed feed or reuse/regress Sparkle's
+          # monotonically increasing build number.
+          xmllint --noout appcast.xml
+          PREVIOUS_MAX_BUILD="$(grep -oE '<sparkle:version>[0-9]+</sparkle:version>' appcast.xml \
+            | sed -E 's#</?sparkle:version>##g' | sort -n | tail -1 || true)"
+          if [ -n "$PREVIOUS_MAX_BUILD" ] && [ "$BUILD" -le "$PREVIOUS_MAX_BUILD" ]; then
+            echo "Build $BUILD must exceed the current appcast build $PREVIOUS_MAX_BUILD."
+            exit 1
+          fi
+
           # Build the new <item>. $SIG_AND_LEN already holds
           # sparkle:edSignature="…" length="…".
           cat > "$RUNNER_TEMP/item.xml" <<EOF
@@ -298,11 +327,48 @@ jobs:
             { print }
           ' appcast.xml > appcast.new && mv appcast.new appcast.xml
 
+          # Validate the exact item Sparkle will consume, including the signed
+          # enclosure metadata, before publishing the feed.
+          xmllint --noout appcast.xml
+          ITEM_COUNT="$(xmllint --xpath \
+            "count(//*[local-name()='item'][*[local-name()='version' and text()='$BUILD'] and *[local-name()='shortVersionString' and text()='$VERSION']])" \
+            appcast.xml)"
+          ENCLOSURE_COUNT="$(xmllint --xpath \
+            "count(//*[local-name()='item'][*[local-name()='version' and text()='$BUILD'] and *[local-name()='shortVersionString' and text()='$VERSION']]/enclosure[@url='$ENCLOSURE_URL' and string-length(@*[local-name()='edSignature']) > 0 and number(@length) > 0])" \
+            appcast.xml)"
+          if [ "$ITEM_COUNT" != "1" ] || [ "$ENCLOSURE_COUNT" != "1" ]; then
+            echo "Generated appcast item is missing, duplicated, unsigned, or has no content length."
+            exit 1
+          fi
+          curl -fsSIL --retry 5 --retry-all-errors "$ENCLOSURE_URL" >/dev/null
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add appcast.xml
           git commit -m "appcast: Pelmet $VERSION" || echo "nothing to commit"
           git push origin gh-pages
+
+          # GitHub Pages deployment is asynchronous. Do not call the release
+          # complete until the public feed serves this exact version/build.
+          PUBLIC_FEED="https://ismatbabirli.github.io/pelmet/appcast.xml"
+          PUBLISHED=false
+          for ATTEMPT in {1..20}; do
+            if curl -fsSL --retry 2 --retry-all-errors \
+                 "${PUBLIC_FEED}?build=${BUILD}&attempt=${ATTEMPT}" \
+                 -o "$RUNNER_TEMP/public-appcast.xml" \
+              && xmllint --noout "$RUNNER_TEMP/public-appcast.xml" \
+              && [ "$(xmllint --xpath \
+                   "count(//*[local-name()='item'][*[local-name()='version' and text()='$BUILD'] and *[local-name()='shortVersionString' and text()='$VERSION']])" \
+                   "$RUNNER_TEMP/public-appcast.xml")" = "1" ]; then
+              PUBLISHED=true
+              break
+            fi
+            sleep 15
+          done
+          if [ "$PUBLISHED" != "true" ]; then
+            echo "Public appcast did not expose Pelmet $VERSION (build $BUILD) within five minutes."
+            exit 1
+          fi
 
       # ---- Keep the Homebrew tap's cask in sync with this release ----
       - name: Bump Homebrew cask

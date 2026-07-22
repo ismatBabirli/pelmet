@@ -57,7 +57,13 @@ targets:
         # and the login Keychain. See docs/RELEASING.md → "Sparkle auto-updates".
         SUPublicEDKey: "PNXQ+qmeChvGLPr2kXxFLXC6U9mwjbQTlJo5RHA3eSU="
         # SUEnableAutomaticChecks is intentionally unset: Sparkle asks the user
-        # once on first launch whether to check automatically (trust-first).
+        # once during early use whether to check automatically (trust-first).
+        # Opted-in scheduled checks run once per day. Network-only recovery is
+        # bounded separately by UpdaterController and never changes this cadence.
+        SUScheduledCheckInterval: 86400
+        # Never inherit Sparkle's legacy SUAutomaticallyUpdate preference. Pelmet
+        # always presents Sparkle's standard approval UI before installation.
+        SUAllowsAutomaticUpdates: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ismatbabirli.Pelmet
