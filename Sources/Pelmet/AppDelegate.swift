@@ -28,9 +28,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MenuBarManager.shared.setUp()
 
         // Start Sparkle (bundled .app only). Sparkle asks the user once on
-        // first launch whether to check automatically; nothing hits the network
-        // until they opt in. Inert under `swift run` (no bundle, no Sparkle).
-        _ = UpdaterController.shared
+        // during early use whether to check automatically; nothing hits the network
+        // until they opt in. The menu bar observes its gentle-reminder state.
+        // Inert under `swift run` (no bundle, no Sparkle).
+        let updater = UpdaterController.shared
+        MenuBarManager.shared.observeUpdater(updater)
 
         // Local-only crash follow-up: captures the clean-exit sentinel first,
         // then (if the last session crashed) offers a prefilled GitHub issue.

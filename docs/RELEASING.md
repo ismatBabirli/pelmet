@@ -8,9 +8,12 @@ Releases are automated. Pushing a `vX.Y.Z` tag triggers
 3. **notarizes** the app and the DMG with Apple and staples the tickets,
 4. packages `Pelmet-<version>.dmg` + `Pelmet-<version>.zip`,
 5. creates the GitHub Release with generated notes + checksums,
-6. EdDSA-signs the `.zip` and appends an item to the Sparkle **appcast** on the
-   `gh-pages` branch (served by GitHub Pages), and
-7. bumps the cask in the `ismatBabirli/homebrew-pelmet` tap.
+6. verifies the bundled Sparkle consent, daily-check, and user-approved install
+   configuration,
+7. EdDSA-signs the `.zip`, validates the appcast and enclosure, appends the item
+   to the `gh-pages` branch, and waits until GitHub Pages serves that exact
+   version/build, and
+8. bumps the cask in the `ismatBabirli/homebrew-pelmet` tap.
 
 The **git tag is the source of truth** for the released version — the workflow
 patches `project.yml`'s `CFBundleShortVersionString` from it, so you don't edit
@@ -156,6 +159,12 @@ up the new version. The workflow also verifies that `CHANGELOG.md` is present in
 locally even when they are offline. If they skipped releases, Pelmet shows every
 entry newer than the last one they dismissed.
 
+The Sparkle publish step fails if the existing or generated appcast is not valid
+XML, the new build does not exceed every published build, the enclosure lacks an
+EdDSA signature or byte length, the release ZIP cannot be reached, or GitHub
+Pages does not expose the new item within five minutes. A failed publish check
+is a failed release; do not announce it as available until the workflow is green.
+
 ## Testing the build without secrets
 
 Use the manual **dry run** — it builds the app and uploads it as a workflow
@@ -169,3 +178,18 @@ Actions → **Release** → **Run workflow** → set a version, leave **dry_run*
 spctl -a -vvv -t install /Applications/Pelmet.app   # → accepted, source=Notarized Developer ID
 xcrun stapler validate /Applications/Pelmet.app
 ```
+
+Before announcing the release, keep an older signed build installed and run the
+update path end to end:
+
+1. With automatic checks enabled, take the Mac offline when a scheduled check
+   runs, reconnect it, and confirm Settings reports the offline state and a new
+   check begins within one minute.
+2. Confirm the menu bar shows **↑** (or **+N ↑**) and Settings names the new
+   version without opening Sparkle's window in the background.
+3. Choose **Update Pelmet to _version_…**, approve **Install and Relaunch**, and
+   verify the launched app's version and build.
+4. Disable automatic checks and verify background requests and pending retries
+   stop, while **Check for Updates…** still performs a manual check.
+5. Repeat offline failures and confirm only three recovery checks occur before
+   Pelmet falls back to Sparkle's next daily check.

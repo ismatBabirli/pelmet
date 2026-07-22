@@ -1,4 +1,5 @@
 import Foundation
+import PelmetCore
 
 /// Simple UserDefaults-backed preferences.
 /// Kept as static accessors so both AppKit (MenuBarManager)
@@ -30,6 +31,8 @@ enum Preferences {
         static let lastSessionCleanExit = "lastSessionCleanExit"
         static let crashPromptDisabled = "crashPromptDisabled"
         static let lastAcknowledgedWhatsNewVersion = "lastAcknowledgedWhatsNewVersion"
+        static let updateRetrySnapshot = "updateRetrySnapshot"
+        static let lastSuccessfulUpdateCheck = "lastSuccessfulUpdateCheck"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -76,6 +79,37 @@ enum Preferences {
     static var settingsPane: String {
         get { UserDefaults.standard.string(forKey: Keys.settingsPane) ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: Keys.settingsPane) }
+    }
+
+    // MARK: - Software update recovery
+
+    /// Pelmet's bounded retry episode after Sparkle loses a scheduled check to
+    /// transient networking. Sparkle owns its normal schedule and preferences;
+    /// this stores only the recovery state Sparkle does not provide.
+    static var updateRetrySnapshot: UpdateRetrySnapshot? {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: Keys.updateRetrySnapshot) else {
+                return nil
+            }
+            return try? JSONDecoder().decode(UpdateRetrySnapshot.self, from: data)
+        }
+        set {
+            guard let newValue,
+                  let data = try? JSONEncoder().encode(newValue)
+            else {
+                UserDefaults.standard.removeObject(forKey: Keys.updateRetrySnapshot)
+                return
+            }
+            UserDefaults.standard.set(data, forKey: Keys.updateRetrySnapshot)
+        }
+    }
+
+    /// Unlike Sparkle's `SULastCheckTime`, this advances only after the feed was
+    /// reached successfully, so Settings never labels an offline failure as a
+    /// successful check.
+    static var lastSuccessfulUpdateCheck: Date? {
+        get { UserDefaults.standard.object(forKey: Keys.lastSuccessfulUpdateCheck) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.lastSuccessfulUpdateCheck) }
     }
 
     /// Whether the system Accessibility prompt was ever triggered — needed to

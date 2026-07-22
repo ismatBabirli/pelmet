@@ -63,7 +63,11 @@ Pelmet places two items in your menu bar:
 Pelmet needs zero special permissions, has no accounts, and embeds no tracking
 SDKs. It makes two kinds of network calls, both under your control:
 
-- **Update checks** (Sparkle): asks you once before checking automatically.
+- **Update checks** (Sparkle): asks you once before enabling daily checks.
+  If a scheduled check meets a temporary network failure, Pelmet performs at
+  most three recovery checks and shows the retry state in Settings. An **↑** in
+  the menu bar means an update is ready to review; Pelmet never installs it
+  without your approval.
 - **Anonymous usage ping**: one tiny event per day (app version, macOS version,
   chip type, which Pelmet features are on) so we know how many people use Pelmet
   and what to prioritize. No personal data, no menu bar contents, never anything
@@ -162,7 +166,7 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 - [ ] Profiles and per-item rules (e.g. "presentation mode")
 - [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
 - [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`
-- [x] **Sparkle auto-updates** — in-app update checks (Sparkle 2), EdDSA-signed, with an appcast on GitHub Pages; "Check for Updates…" in the menu and a Software Update toggle in Settings
+- [x] **Reliable Sparkle updates** — opt-in daily checks, bounded retry after temporary network failures, an **↑** menu-bar reminder, EdDSA-signed downloads, and explicit approval before Install and Relaunch
 
 The full vision and phased plan live in [PROJECT.md](PROJECT.md); release history
 is in [CHANGELOG.md](CHANGELOG.md).

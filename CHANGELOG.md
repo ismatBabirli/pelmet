@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-07-22
+
+### Added
+
+- Available updates now stay visible as a monochrome **↑** beside Pelmet's
+  menu-bar toggle (combined as **+N ↑** when icons are hidden by the notch).
+  Settings also shows the available version, retry state, and last successful
+  check time.
+
+### Changed
+
+- Automatic update checks remain opt-in and run daily, while installing an
+  update always requires approval in Sparkle's standard Install and Relaunch
+  dialog. The release workflow now validates the app's update configuration,
+  appcast XML, increasing build number, signed enclosure, downloadable ZIP,
+  and publicly deployed feed item.
+
+### Fixed
+
+- A scheduled check that fails because the Mac is offline no longer disappears
+  for a full day. Pelmet remembers the failure across relaunches, retries after
+  connectivity returns or with bounded backoff, and stops after three recovery
+  attempts so repeated failures cannot form a tight loop.
+
 ## [0.3.2] - 2026-07-21
 
 ### Added
@@ -117,7 +141,8 @@ First public release — the working MVP.
 - Requires **macOS 13 Ventura** or later.
 - The core hide/show experience needs **zero special permissions**.
 
-[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/ismatBabirli/pelmet/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/ismatBabirli/pelmet/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/ismatBabirli/pelmet/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ismatBabirli/pelmet/compare/v0.2.0...v0.3.0

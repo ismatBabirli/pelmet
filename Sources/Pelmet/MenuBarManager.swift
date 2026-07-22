@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import PelmetCore
 
 /// Manages two NSStatusItems:
@@ -45,6 +46,8 @@ final class MenuBarManager: NSObject {
 
     private var toggleItem: NSStatusItem!
     private var separatorItem: NSStatusItem!
+    private var updaterObservation: AnyCancellable?
+    private var updateAvailableVersion: String?
 
     /// Latest confirmed layout facts from NotchLayoutMonitor.
     private var swallowedCount = 0
@@ -138,6 +141,21 @@ final class MenuBarManager: NSObject {
 
         NotchLayoutMonitor.shared.requestMeasurement(reason: .launch)
         armOnboardingFallback()
+    }
+
+    /// Sparkle's scheduled update UI is deliberately replaced by a persistent
+    /// menu-bar cue. Binding after both services initialize also replays the
+    /// current value, so an update found during launch cannot be missed.
+    func observeUpdater(_ updater: UpdaterController) {
+        updateAvailableVersion = updater.availableVersion
+        updaterObservation = updater.$status
+            .map(\.availableVersion)
+            .removeDuplicates()
+            .receive(on: RunLoop.main)
+            .sink { [weak self] version in
+                self?.updateAvailableVersion = version
+                self?.updateToggleIcon()
+            }
     }
 
     /// If the layout never settles into a confirmed classification, `apply()`
@@ -429,10 +447,9 @@ final class MenuBarManager: NSObject {
             .compactMap { $0 }
     }
 
-    /// State is conveyed by the chevron glyph and a plain-text count ONLY —
-    /// never a colored dot. Small colored dots in the menu bar are macOS
-    /// privacy vocabulary (green = camera, orange = mic, purple = screen
-    /// capture) and a badge in that grammar reads as a recording alarm.
+    /// State is conveyed by the chevron glyph and plain monochrome text — never
+    /// a colored dot. Small colored dots in the menu bar are macOS privacy
+    /// vocabulary (green = camera, orange = mic, purple = screen capture).
     private func updateToggleIcon() {
         guard let button = toggleItem.button else { return }
 
@@ -443,17 +460,22 @@ final class MenuBarManager: NSObject {
         )
 
         let showCount = !isCollapsed && swallowedCount > 0 && Preferences.showSwallowedCount
-        if showCount {
+        let updatePresentation = MenuBarUpdatePresentation(
+            swallowedCount: swallowedCount,
+            showsSwallowedCount: showCount,
+            availableVersion: updateAvailableVersion
+        )
+        if !updatePresentation.badgeText.isEmpty {
             button.attributedTitle = NSAttributedString(
-                string: "+\(swallowedCount)",
+                string: updatePresentation.badgeText,
                 attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)]
             )
         } else {
             button.attributedTitle = NSAttributedString(string: "")
         }
 
-        let tooltip: String
-        let accessibilityValue: String
+        var tooltip: String
+        var accessibilityValue: String
         if isCollapsed {
             tooltip = "Pelmet: show hidden icons (⌥⌘B)"
             accessibilityValue = "Icons hidden"
@@ -473,6 +495,12 @@ final class MenuBarManager: NSObject {
         } else {
             tooltip = "Pelmet: hide icons (⌥⌘B)"
             accessibilityValue = "Icons shown"
+        }
+        if let updateNotice = updatePresentation.tooltipNotice {
+            tooltip = "\(updateNotice) \(tooltip)"
+        }
+        if let updateNotice = updatePresentation.accessibilityNotice {
+            accessibilityValue = "\(updateNotice) \(accessibilityValue)"
         }
         button.toolTip = tooltip
         button.setAccessibilityValue(accessibilityValue)
@@ -578,8 +606,14 @@ final class MenuBarManager: NSObject {
 
         // Sparkle: only in the bundled .app (compiled out under `swift run`).
         if UpdaterController.shared.isAvailable {
+            let updatePresentation = MenuBarUpdatePresentation(
+                swallowedCount: swallowedCount,
+                showsSwallowedCount: !isCollapsed && swallowedCount > 0
+                    && Preferences.showSwallowedCount,
+                availableVersion: updateAvailableVersion
+            )
             let updatesEntry = NSMenuItem(
-                title: "Check for Updates…",
+                title: updatePresentation.actionTitle,
                 action: #selector(checkForUpdates),
                 keyEquivalent: ""
             )
