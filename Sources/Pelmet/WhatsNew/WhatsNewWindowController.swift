@@ -152,7 +152,10 @@ final class WhatsNewWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
         window.title = "What's New in Pelmet"
-        window.minSize = NSSize(width: 460, height: 360)
+        // Match WhatsNewView's minimum content size. NSWindow.minSize includes
+        // the title bar, which allowed the hosting view's footer to be clipped
+        // by the title-bar height when the window was resized to its minimum.
+        window.contentMinSize = NSSize(width: 460, height: 360)
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.moveToActiveSpace]
         window.delegate = self
