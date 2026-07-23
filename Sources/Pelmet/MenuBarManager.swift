@@ -43,6 +43,9 @@ final class MenuBarManager: NSObject {
 
     private(set) var isCollapsed = false
     private var rehideTimer: Timer?
+    private let hoverMonitor = MenuBarHoverMonitor()
+    private var lastShowOnHoverPreference = Preferences.showOnHover
+    private var lastAutoRehidePreference = Preferences.autoRehide
 
     private var toggleItem: NSStatusItem!
     private var separatorItem: NSStatusItem!
@@ -106,20 +109,20 @@ final class MenuBarManager: NSObject {
         // Never auto-collapse under an open tip popover or Pelmet window;
         // restart the full delay once everything is closed.
         UIActivityTracker.shared.onFirstOpened = { [weak self] in
-            self?.rehideTimer?.invalidate()
+            self?.cancelRehide()
         }
         UIActivityTracker.shared.onAllClosed = { [weak self] in
             guard let self, !self.isCollapsed else { return }
             self.scheduleRehideIfNeeded()
         }
 
-        // The Settings toggle for the chevron count writes straight to
-        // UserDefaults (@AppStorage); reflect changes immediately.
+        // Settings writes straight to UserDefaults through @AppStorage.
+        // Reflect display and behavior changes immediately.
         NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.updateToggleIcon()
+            self?.preferencesDidChange()
         }
 
         // Restore the last collapse state. First launch starts EXPANDED and
@@ -130,6 +133,9 @@ final class MenuBarManager: NSObject {
         } else {
             expand(scheduleRehide: false)
         }
+        lastShowOnHoverPreference = Preferences.showOnHover
+        lastAutoRehidePreference = Preferences.autoRehide
+        configureHoverMonitoring()
 
         StatusItemActivationEngine.shared.start()
         // The engine's directory changes on its own schedule (grant lands,
@@ -141,6 +147,12 @@ final class MenuBarManager: NSObject {
 
         NotchLayoutMonitor.shared.requestMeasurement(reason: .launch)
         armOnboardingFallback()
+    }
+
+    func tearDown() {
+        cancelRehide()
+        onboardingFallbackTimer?.invalidate()
+        hoverMonitor.stop()
     }
 
     /// Sparkle's scheduled update UI is deliberately replaced by a persistent
@@ -212,6 +224,7 @@ final class MenuBarManager: NSObject {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.imagePosition = .imageLeading
         button.setAccessibilityLabel("Pelmet")
+        hoverMonitor.attach(to: button)
     }
 
     private func configureSeparatorButton(_ item: NSStatusItem) {
@@ -229,8 +242,18 @@ final class MenuBarManager: NSObject {
     }
 
     func expand(scheduleRehide: Bool = true) {
+        setExpanded(persistState: true, scheduleRehide: scheduleRehide)
+    }
+
+    private func expandForHover() {
+        setExpanded(persistState: false, scheduleRehide: false)
+    }
+
+    private func setExpanded(persistState: Bool, scheduleRehide: Bool) {
         isCollapsed = false
-        Preferences.isCollapsed = false
+        if persistState {
+            Preferences.isCollapsed = false
+        }
         separatorItem.length = expandedSeparatorLength
         separatorItem.button?.image = separatorImage()
         updateToggleIcon()
@@ -243,7 +266,7 @@ final class MenuBarManager: NSObject {
         ShelfPanelController.shared.hide(animated: false)
         isCollapsed = true
         Preferences.isCollapsed = true
-        rehideTimer?.invalidate()
+        cancelRehide()
         separatorItem.length = collapsedSeparatorLength
         // Hide the divider glyph while it's a giant invisible spacer.
         separatorItem.button?.image = nil
@@ -253,6 +276,67 @@ final class MenuBarManager: NSObject {
         separatorSwallowed = false
         updateToggleIcon()
         NotchLayoutMonitor.shared.requestMeasurement(reason: .collapseSettled)
+    }
+
+    // MARK: - Show on hover
+
+    private func configureHoverMonitoring() {
+        guard Preferences.showOnHover else {
+            hoverMonitor.stop()
+            return
+        }
+        hoverMonitor.start(
+            regionProvider: { [weak self] in
+                self?.currentHoverRegion
+            },
+            onTransition: { [weak self] transition in
+                self?.handleHoverTransition(transition)
+            }
+        )
+    }
+
+    private var currentHoverRegion: MenuBarHoverMonitor.Region? {
+        guard let window = toggleItem?.button?.window,
+              window.isVisible,
+              let screen = window.screen
+        else { return nil }
+        return (toggleFrame: window.frame, screenFrame: screen.frame)
+    }
+
+    private func handleHoverTransition(_ transition: MenuBarHoverTransition) {
+        let decision = MenuBarHoverPolicy.decide(
+            transition: transition,
+            isCollapsed: isCollapsed,
+            autoRehide: Preferences.autoRehide
+        )
+        if decision.cancelRehide {
+            cancelRehide()
+        }
+        if decision.reveal {
+            expandForHover()
+        }
+        if decision.scheduleRehide {
+            scheduleRehideIfNeeded()
+        }
+    }
+
+    private func preferencesDidChange() {
+        updateToggleIcon()
+
+        let showOnHover = Preferences.showOnHover
+        if showOnHover != lastShowOnHoverPreference {
+            lastShowOnHoverPreference = showOnHover
+            configureHoverMonitoring()
+        }
+
+        let autoRehide = Preferences.autoRehide
+        guard autoRehide != lastAutoRehidePreference else { return }
+        lastAutoRehidePreference = autoRehide
+        if autoRehide {
+            scheduleRehideIfNeeded()
+        } else {
+            cancelRehide()
+        }
     }
 
     // MARK: - Layout monitoring
@@ -674,15 +758,29 @@ final class MenuBarManager: NSObject {
 
     // MARK: - Auto-rehide
 
-    private func scheduleRehideIfNeeded() {
+    private func cancelRehide() {
         rehideTimer?.invalidate()
-        guard Preferences.autoRehide,
+        rehideTimer = nil
+    }
+
+    private func scheduleRehideIfNeeded() {
+        cancelRehide()
+        guard !isCollapsed,
+              Preferences.autoRehide,
+              !hoverMonitor.isPointerInMenuBar,
               UIActivityTracker.shared.openSurfaces == 0 else { return }
         rehideTimer = Timer.scheduledTimer(
             withTimeInterval: Preferences.rehideDelay,
             repeats: false
         ) { [weak self] _ in
-            self?.collapse()
+            guard let self else { return }
+            self.rehideTimer = nil
+            guard !self.isCollapsed,
+                  Preferences.autoRehide,
+                  !self.hoverMonitor.isPointerInMenuBar,
+                  UIActivityTracker.shared.openSurfaces == 0
+            else { return }
+            self.collapse()
         }
     }
 

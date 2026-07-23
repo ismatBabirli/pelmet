@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Show on hover** can now be enabled in General settings to reveal managed
+  icons whenever the pointer enters the menu bar. It uses the existing
+  permission-free divider and follows the configured auto-rehide behavior.
+
 ## [0.3.3] - 2026-07-22
 
 ### Added

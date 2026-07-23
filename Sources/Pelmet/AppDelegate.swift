@@ -68,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Record a clean shutdown so the next launch doesn't mistake this quit for
     /// a crash. SIGINT/SIGTERM are handled separately in CrashReportMonitor.
     func applicationWillTerminate(_ notification: Notification) {
+        MenuBarManager.shared.tearDown()
         CrashReportMonitor.shared.markCleanExit()
     }
 
@@ -114,6 +115,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ]
         if Preferences.autoRehide {
             lines.append("  • Revealed icons re-hide after \(Int(Preferences.rehideDelay)) s (right-click the chevron → Settings).")
+        }
+        if Preferences.showOnHover {
+            lines.append("  • Show on hover is on: move the pointer into the menu bar to reveal icons.")
         }
         lines.append(contentsOf: [
             "  • A number next to the chevron (like +3) means that many icons don't fit",
