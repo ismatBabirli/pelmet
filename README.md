@@ -22,8 +22,8 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 
 > [!NOTE]
 > **Status: shipping.** Hide/show works with zero special permissions, and the
-> notch-aware Shelf panel and opt-in one-click access have shipped. Show-on-hover
-> and profiles are next on the [roadmap](#roadmap).
+> notch-aware Shelf panel, opt-in one-click access, and opt-in show-on-hover
+> have shipped. Profiles are next on the [roadmap](#roadmap).
 
 ## Why
 
@@ -86,11 +86,12 @@ that you review and submit yourself.
 | Action | How |
 |---|---|
 | Show/hide managed icons | Click the ‹ / › toggle, or press **⌥⌘B** |
+| Reveal managed icons on hover | Enable **Show hidden items on hover** in Settings, then move the pointer into the menu bar |
 | Keep an icon always visible | ⌘-drag it to the **right** of the ╱ divider |
 | See why icons are missing | Hover or right-click the toggle when it shows **+N** |
 | Lost the divider? | Right-click the toggle → Reset Divider Position |
 | Fit more icons beside the notch | Settings → Make Room… (incl. tighter icon spacing) |
-| Settings (auto-rehide, launch at login) | Right-click the toggle → Settings… |
+| Settings (hover, auto-rehide, launch at login) | Right-click the toggle → Settings… |
 | Quit | Right-click the toggle → Quit Pelmet |
 
 ## Install
@@ -162,7 +163,7 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 - [x] **The Shelf** — a blurred, rounded panel below the notch listing the icons macOS hid, opened by clicking the count (or ⌥⌘N). Rows show each item's app icon and name — **never a screen capture**, so no Screen Recording permission and no purple recording dot.
 - [x] **One-click access** — an *opt-in* Accessibility toggle that opens hidden items with a single click (and identifies them on macOS 26 Tahoe). Off by default; everything else works without it.
-- [ ] Show on hover — reveal when the pointer touches the menu bar
+- [x] Show on hover: reveal when the pointer touches the menu bar (opt-in)
 - [ ] Profiles and per-item rules (e.g. "presentation mode")
 - [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
 - [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`

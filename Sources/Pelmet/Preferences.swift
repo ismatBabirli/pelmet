@@ -9,6 +9,7 @@ enum Preferences {
     enum Keys {
         static let autoRehide = "autoRehide"
         static let rehideDelay = "rehideDelay"
+        static let showOnHover = "showOnHover"
         static let isCollapsed = "isCollapsed"
         static let showSwallowedCount = "showSwallowedCount"
         static let didShowDividerTip = "didShowDividerTip"
@@ -44,6 +45,12 @@ enum Preferences {
 
     static var autoRehide: Bool {
         UserDefaults.standard.object(forKey: Keys.autoRehide) as? Bool ?? true
+    }
+
+    /// Opt-in accelerator that reveals managed items when the pointer enters
+    /// the menu bar. The click and hotkey controls remain available either way.
+    static var showOnHover: Bool {
+        UserDefaults.standard.bool(forKey: Keys.showOnHover)
     }
 
     /// Seconds before revealed items hide again.

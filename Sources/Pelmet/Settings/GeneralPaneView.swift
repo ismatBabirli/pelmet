@@ -10,6 +10,7 @@ struct GeneralPaneView: View {
     @ObservedObject private var updater = UpdaterController.shared
     @AppStorage(Preferences.Keys.autoRehide) private var autoRehide = true
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
+    @AppStorage(Preferences.Keys.showOnHover) private var showOnHover = false
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
     @State private var autoCheckUpdates = UpdaterController.shared.automaticallyChecksForUpdates
@@ -23,6 +24,11 @@ struct GeneralPaneView: View {
     var body: some View {
         Form {
             Section("Behavior") {
+                Toggle("Show hidden items on hover", isOn: $showOnHover)
+                Text("Move the pointer into the menu bar to reveal managed items.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 Toggle("Automatically re-hide items", isOn: $autoRehide)
 
                 if autoRehide {

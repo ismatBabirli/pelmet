@@ -57,7 +57,8 @@ Pelmet occupies a deliberate position in that landscape:
 *Goal: something people can install and love in under a minute.*
 
 - **Fluid animations** for expand/collapse (the "Vanilla moment" — icons glide, not blink)
-- **Show on hover / scroll:** reveal hidden items when the pointer touches the menu bar or the user scrolls on it
+- ✅ **Show on hover:** opt-in reveal when the pointer touches the menu bar
+- **Show on scroll:** reveal hidden items when the user scrolls on the menu bar
 - **Custom hotkey recorder** (replace hardcoded ⌥⌘B)
 - ✅ **Onboarding:** first-launch walkthrough teaching the ⌘-drag gesture (shipped in 0.1.0)
 - ✅ **App icon & identity:** pelmet/curtain metaphor, warm and crafted (shipped in 0.1.0)
