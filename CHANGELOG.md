@@ -7,11 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-24
+
 ### Added
 
 - **Show on hover** can now be enabled in General settings to reveal managed
   icons whenever the pointer enters the menu bar. It uses the existing
   permission-free divider and follows the configured auto-rehide behavior.
+
+### Fixed
+
+- The What's New window no longer clips its changelog link and Done button
+  when resized to its minimum height.
 
 ## [0.3.3] - 2026-07-22
 
@@ -147,7 +154,8 @@ First public release — the working MVP.
 - Requires **macOS 13 Ventura** or later.
 - The core hide/show experience needs **zero special permissions**.
 
-[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/ismatBabirli/pelmet/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/ismatBabirli/pelmet/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/ismatBabirli/pelmet/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/ismatBabirli/pelmet/compare/v0.3.0...v0.3.1
