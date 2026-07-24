@@ -8,7 +8,7 @@ Releases are automated. Pushing a `vX.Y.Z` tag triggers
 3. **notarizes** the app and the DMG with Apple and staples the tickets,
 4. packages `Pelmet-<version>.dmg` + `Pelmet-<version>.zip`,
 5. creates the GitHub Release with generated notes + checksums,
-6. verifies the bundled Sparkle consent, daily-check, and user-approved install
+6. verifies the bundled Sparkle consent, six-hour check, and user-approved install
    configuration,
 7. EdDSA-signs the `.zip`, validates the appcast and enclosure, appends the item
    to the `gh-pages` branch, and waits until GitHub Pages serves that exact
@@ -192,4 +192,4 @@ update path end to end:
 4. Disable automatic checks and verify background requests and pending retries
    stop, while **Check for Updates…** still performs a manual check.
 5. Repeat offline failures and confirm only three recovery checks occur before
-   Pelmet falls back to Sparkle's next daily check.
+   Pelmet falls back to Sparkle's next six-hour check.

@@ -23,7 +23,7 @@ enum UpdaterStatus: Equatable {
             return "Software Update is available in the bundled app."
         case let .idle(lastSuccessfulCheck):
             guard let lastSuccessfulCheck else {
-                return "Updates are checked daily after you opt in."
+                return "Updates are checked every 6 hours after you opt in."
             }
             let formatter = RelativeDateTimeFormatter()
             formatter.dateTimeStyle = .named

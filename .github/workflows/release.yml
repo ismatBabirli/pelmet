@@ -116,7 +116,7 @@ jobs:
           test "$(/usr/libexec/PlistBuddy -c 'Print :SUFeedURL' "$INFO_PLIST")" = \
             "https://ismatbabirli.github.io/pelmet/appcast.xml"
           test -n "$(/usr/libexec/PlistBuddy -c 'Print :SUPublicEDKey' "$INFO_PLIST")"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :SUScheduledCheckInterval' "$INFO_PLIST")" = "86400"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :SUScheduledCheckInterval' "$INFO_PLIST")" = "21600"
           test "$(/usr/libexec/PlistBuddy -c 'Print :SUAllowsAutomaticUpdates' "$INFO_PLIST")" = "false"
           if /usr/libexec/PlistBuddy -c 'Print :SUEnableAutomaticChecks' "$INFO_PLIST" >/dev/null 2>&1; then
             echo "SUEnableAutomaticChecks must stay unset so Sparkle asks for consent."
