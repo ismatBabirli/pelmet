@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Automatic update checks now run every 6 hours after opt-in instead of daily.
+
 ## [0.4.0] - 2026-07-24
 
 ### Added
@@ -31,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Automatic update checks remain opt-in and run daily, while installing an
+- Automatic update checks remain opt-in and run every 6 hours, while installing an
   update always requires approval in Sparkle's standard Install and Relaunch
   dialog. The release workflow now validates the app's update configuration,
   appcast XML, increasing build number, signed enclosure, downloadable ZIP,
