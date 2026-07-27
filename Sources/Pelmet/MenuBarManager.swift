@@ -435,6 +435,10 @@ final class MenuBarManager: NSObject {
         if plan.attemptOneClickOffer {
             OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
         }
+        // Last in the serialized chain: the star nudge is layout-independent and
+        // self-gates on its policy, so it only appears days into real use and
+        // never covers a tip or the release-notes window.
+        StarNudgeWindowController.shared.maybePresent()
     }
 
     /// The toggle is the escape hatch — if it ever gets swallowed the user

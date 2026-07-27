@@ -34,6 +34,10 @@ enum Preferences {
         static let lastAcknowledgedWhatsNewVersion = "lastAcknowledgedWhatsNewVersion"
         static let updateRetrySnapshot = "updateRetrySnapshot"
         static let lastSuccessfulUpdateCheck = "lastSuccessfulUpdateCheck"
+        static let firstLaunchAt = "firstLaunchAt"
+        static let starNudgeLastShownAt = "starNudgeLastShownAt"
+        static let starNudgeShowCount = "starNudgeShowCount"
+        static let starNudgeDismissed = "starNudgeDismissed"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -216,6 +220,36 @@ enum Preferences {
     static var lastAcknowledgedWhatsNewVersion: String? {
         get { UserDefaults.standard.string(forKey: Keys.lastAcknowledgedWhatsNewVersion) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.lastAcknowledgedWhatsNewVersion) }
+    }
+
+    // MARK: - Star-on-GitHub nudge
+
+    /// When the app first launched, seeded once at startup. Anchors the "after
+    /// some time" delay before the star nudge may appear. A usage fact, not an
+    /// onboarding tip, so `resetOnboardingFlags()` leaves it be.
+    static var firstLaunchAt: Date? {
+        get { UserDefaults.standard.object(forKey: Keys.firstLaunchAt) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.firstLaunchAt) }
+    }
+
+    /// When the star nudge was last shown; nil until the first show. Drives the
+    /// snooze interval between reminders.
+    static var starNudgeLastShownAt: Date? {
+        get { UserDefaults.standard.object(forKey: Keys.starNudgeLastShownAt) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.starNudgeLastShownAt) }
+    }
+
+    /// How many times the star nudge has been shown, for the hard cap.
+    static var starNudgeShowCount: Int {
+        get { UserDefaults.standard.integer(forKey: Keys.starNudgeShowCount) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.starNudgeShowCount) }
+    }
+
+    /// Set once the user stars, opts out ("Don't ask again"), or the show cap is
+    /// reached. A true value stops the nudge forever.
+    static var starNudgeDismissed: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.starNudgeDismissed) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.starNudgeDismissed) }
     }
 
     /// Must be sampled before menu setup writes status-item positions. A real
