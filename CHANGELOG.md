@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-07-27
+
 ### Added
 
 - A gentle prompt to star Pelmet on GitHub, shown a few days after first use
@@ -166,7 +168,9 @@ First public release — the working MVP.
 - Requires **macOS 13 Ventura** or later.
 - The core hide/show experience needs **zero special permissions**.
 
-[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/ismatBabirli/pelmet/compare/v0.4.1...v0.4.2
+[0.4.1]: https://github.com/ismatBabirli/pelmet/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/ismatBabirli/pelmet/compare/v0.3.3...v0.4.0
 [0.3.3]: https://github.com/ismatBabirli/pelmet/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/ismatBabirli/pelmet/compare/v0.3.1...v0.3.2
