@@ -25,6 +25,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hadExistingPreferences: hadExistingPreferences
         )
 
+        // Start the "after some time" clock for the star-on-GitHub nudge exactly
+        // once. Existing users begin counting from their first launch of this
+        // build; they have already shown engagement, so that is acceptable.
+        if Preferences.firstLaunchAt == nil {
+            Preferences.firstLaunchAt = Date()
+        }
+
         MenuBarManager.shared.setUp()
 
         // Start Sparkle (bundled .app only). Sparkle asks the user once on

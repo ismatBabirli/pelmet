@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A gentle prompt to star Pelmet on GitHub, shown a few days after first use
+  once you have hidden icons at least once. It opens the repo in your browser,
+  sends nothing, and can be dismissed for good.
+
 ## [0.4.1] - 2026-07-24
 
 ### Changed
