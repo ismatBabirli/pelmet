@@ -58,28 +58,48 @@ On a notched Mac:
     Settings → availability flips to "Not granted"; clicking a row reports the
     permission failure inline; the core hide/show is untouched.
 
+## Profiles
+
+16. **Permission-free management.** Open Settings → Profiles without an
+    Accessibility grant. Confirm the pane does not prompt, existing profiles
+    can be renamed, reordered, selected as default, or deleted.
+17. **Capture.** Expand the bar if needed, enter a name, and choose "Save
+    Current Arrangement". Confirm the profile records identifiable items and
+    restores the prior collapsed or expanded state after capture.
+18. **Apply with permission.** Grant Accessibility in a bundled Release build,
+    apply a profile from Settings and from the chevron → Profiles menu. Confirm
+    managed/always-visible membership and left-to-right order change, then the
+    original collapsed state returns.
+19. **Best effort.** Add an unidentified or ambiguous item, apply a profile,
+    and confirm controllable items move while unresolved items remain unchanged
+    and appear under Last Result.
+20. **Launch default.** Select a default profile and enable "Apply the default
+    profile at launch". With Accessibility unavailable, relaunch and confirm no
+    prompt appears and Settings reports the permission requirement. Grant it,
+    relaunch, and confirm the profile applies.
+
 ## Safety rails
 
-16. **Hung app.** `kill -STOP <pid>` a menu bar app, then open the Shelf → the
+21. **Hung app.** `kill -STOP <pid>` a menu bar app, then open the Shelf → the
     AX sweep finishes within ~3s, no beachball (`kill -CONT` afterwards).
-17. **User race.** Start an activation, then immediately move the physical
+22. **User race.** Start an activation, then immediately move the physical
     mouse / press a button → the session aborts cleanly, no stuck synthetic
     button (verify with a manual click afterwards).
-18. **Kill switch.** `PELMET_DISABLE_ACTIVATION=1 ./Pelmet` → clicks report the
+23. **Kill switch.** `PELMET_DISABLE_ACTIVATION=1 ./Pelmet` → clicks report the
     permission failure and never post synthetic events.
 
 ## Accessibility
 
-19. VoiceOver announces each row as a button with the app name; arrow keys
+24. VoiceOver announces each row as a button with the app name; arrow keys
     move the selection; Return activates; Esc closes.
-20. System Settings → Accessibility: Reduce Motion → the Shelf appears with no
+25. System Settings → Accessibility: Reduce Motion → the Shelf appears with no
     slide/fade. Reduce Transparency → the panel draws opaque.
-21. `PELMET_DEBUG_LAYOUT=verbose swift run` → no repeating republish loop from
+26. `PELMET_DEBUG_LAYOUT=verbose swift run` → no repeating republish loop from
     PID-only churn (the digest ignores owner changes).
 
 ## Telemetry (anonymous daily ping)
 
-22. **Dry run, nothing sent.** `PELMET_DEBUG_TELEMETRY=verbose swift run` → prints
+27. **Dry run, nothing sent.** `PELMET_DEBUG_TELEMETRY=verbose swift run` → prints
     the gate decision and the exact JSON payload to stdout, and `active=false`
     (a `swift run` dev build is inert). Confirms the payload shape without a send.
     To actually send one from local for an end-to-end check, add
@@ -87,15 +107,15 @@ On a notched Mac:
     only, never beats `DO_NOT_TRACK`, `PELMET_DISABLE_TELEMETRY`, or an off
     preference). The day is recorded on success, so re-sending the same day needs
     `defaults delete com.ismatbabirli.Pelmet telemetryLastHeartbeatDay` first.
-23. **Kill switch.** `PELMET_DISABLE_TELEMETRY=1` or `DO_NOT_TRACK=1` → the verbose
+28. **Kill switch.** `PELMET_DISABLE_TELEMETRY=1` or `DO_NOT_TRACK=1` → the verbose
     trace shows `active=false`; the Settings toggle renders off and disabled under
     `DO_NOT_TRACK`.
-24. **Inert Debug bundle.** In the XcodeGen Debug `.app`, telemetry stays off via
+29. **Inert Debug bundle.** In the XcodeGen Debug `.app`, telemetry stays off via
     `#if DEBUG` even though the bundle has a real version. Only a Release build with
     a real PostHog key (see `docs/TELEMETRY.md`) actually sends.
-25. **First-run notice.** On a fresh profile the "Anonymous usage statistics" notice
+30. **First-run notice.** On a fresh profile the "Anonymous usage statistics" notice
     appears once, after the welcome tip, and does not stack on Sparkle's prompt.
     "Turn Off" flips the Settings toggle; nothing sends during that session.
-26. **Crash follow-up (local only).** `kill -TRAP <pid>` a Release build, relaunch →
+31. **Crash follow-up (local only).** `kill -TRAP <pid>` a Release build, relaunch →
     the "Pelmet quit unexpectedly" alert offers a prefilled GitHub issue and reveals
     the newest `Pelmet-*.ips` in Finder. A normal quit or Ctrl-C does not trigger it.

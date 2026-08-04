@@ -20,7 +20,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         window.delegate = self
     }
 
-    func show() {
+    func show(pane: SettingsPane? = nil) {
+        if let pane {
+            Preferences.settingsPane = pane.rawValue
+        }
         // Accessory apps need explicit activation to bring windows forward.
         NSApp.activate(ignoringOtherApps: true)
         if window?.isVisible != true {
@@ -29,6 +32,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         }
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        if let pane {
+            NotificationCenter.default.post(
+                name: .pelmetSettingsSelectPane,
+                object: nil,
+                userInfo: ["pane": pane.rawValue]
+            )
+        }
     }
 
     func windowWillClose(_ notification: Notification) {

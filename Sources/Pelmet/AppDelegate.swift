@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         MenuBarManager.shared.setUp()
+        ProfileController.shared.scheduleDefaultProfileApplication()
 
         // Start Sparkle (bundled .app only). Sparkle asks the user once on
         // during early use whether to check automatically; nothing hits the network

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Profiles**: save identifiable menu bar arrangements, including divider
+  membership and left-to-right order, then apply them from Settings or the
+  chevron menu. Items that cannot be identified or are ambiguous remain
+  unchanged and are reported. Applying a profile uses the existing opt-in
+  Accessibility path; ordinary startup never prompts for permission.
+
 ## [0.4.2] - 2026-07-27
 
 ### Added

@@ -1,6 +1,10 @@
 import Combine
 import SwiftUI
 
+extension Notification.Name {
+    static let pelmetSettingsSelectPane = Notification.Name("PelmetSettingsSelectPane")
+}
+
 /// System Settings-style two-column layout: a sidebar of panes on the left,
 /// the selected pane's form on the right. The window uses a transparent
 /// full-size titlebar, so the sidebar material runs to the top edge and the
@@ -75,6 +79,13 @@ struct SettingsRootView: View {
                 selection = .general
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .pelmetSettingsSelectPane)) { note in
+            guard let rawValue = note.userInfo?["pane"] as? String,
+                  let pane = SettingsPane(rawValue: rawValue)
+            else { return }
+            selection = pane
+            Preferences.settingsPane = pane.rawValue
+        }
     }
 
     @ViewBuilder
@@ -83,6 +94,7 @@ struct SettingsRootView: View {
         case .general: GeneralPaneView()
         case .menuBarSpace: MenuBarSpacePaneView()
         case .oneClickAccess: OneClickAccessPaneView()
+        case .profiles: ProfilesPaneView()
         case .about: AboutPaneView()
         }
     }

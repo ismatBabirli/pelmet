@@ -53,8 +53,9 @@ geometry lives in `Sources/PelmetCore/`.
 | `Preferences.swift` | UserDefaults keys shared between AppKit and SwiftUI |
 | `Settings/SettingsRootView.swift` | System Settings-style sidebar + detail layout |
 | `Settings/SettingsPane.swift` | Pane descriptors: titles, icons, notch-gated availability |
-| `Settings/*PaneView.swift` | The panes: General, Menu Bar Space, One-Click Access |
+| `Settings/*PaneView.swift` | The panes: General, Menu Bar Space, One-Click Access, Profiles |
 | `Settings/SettingsWindowController.swift` | Hosts the settings window from an accessory app |
+| `Profiles/ProfileController.swift` | Profile persistence, capture, matching, and best-effort command drags |
 | `Shelf/` | The blurred "+N hidden icons" panel: panel, controller, SwiftUI rows, owner resolution |
 | `Activation/` | Opt-in Accessibility engine: one-click activation of real status items (AX reader, synthetic events, permission monitor) |
 | `Updates/UpdaterController.swift` | Sparkle facade — real under `#if canImport(Sparkle)` (XcodeGen build), inert stub in plain SPM |
