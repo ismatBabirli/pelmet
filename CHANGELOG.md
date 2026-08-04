@@ -5,15 +5,9 @@ All notable changes to Pelmet are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
 ## [0.5.0] - 2026-08-04
-
-### Added
-
-- **Profiles**: save identifiable menu bar arrangements, including divider
-  membership and left-to-right order, then apply them from Settings or the
-  chevron menu. Items that cannot be identified or are ambiguous remain
-  unchanged and are reported. Applying a profile uses the existing opt-in
-  Accessibility path; ordinary startup never prompts for permission.
 
 ### Added
 
