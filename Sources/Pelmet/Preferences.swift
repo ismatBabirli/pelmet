@@ -38,6 +38,10 @@ enum Preferences {
         static let starNudgeLastShownAt = "starNudgeLastShownAt"
         static let starNudgeShowCount = "starNudgeShowCount"
         static let starNudgeDismissed = "starNudgeDismissed"
+        static let menuBarProfiles = "menuBarProfiles"
+        static let activeProfileID = "activeProfileID"
+        static let defaultProfileID = "defaultProfileID"
+        static let applyDefaultProfileAtLaunch = "applyDefaultProfileAtLaunch"
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -90,6 +94,65 @@ enum Preferences {
     static var settingsPane: String {
         get { UserDefaults.standard.string(forKey: Keys.settingsPane) ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: Keys.settingsPane) }
+    }
+
+    // MARK: - Profiles
+
+    /// Saved menu-bar arrangements. A missing or malformed value is treated
+    /// as an empty store so a bad profile never blocks Pelmet startup.
+    static var menuBarProfiles: [MenuBarProfile] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: Keys.menuBarProfiles),
+                  let profiles = try? JSONDecoder().decode([MenuBarProfile].self, from: data)
+            else { return [] }
+            return profiles
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else {
+                UserDefaults.standard.removeObject(forKey: Keys.menuBarProfiles)
+                return
+            }
+            UserDefaults.standard.set(data, forKey: Keys.menuBarProfiles)
+        }
+    }
+
+    static var activeProfileID: UUID? {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: Keys.activeProfileID) else {
+                return nil
+            }
+            return UUID(uuidString: raw)
+        }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(newValue.uuidString, forKey: Keys.activeProfileID)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.activeProfileID)
+            }
+        }
+    }
+
+    static var defaultProfileID: UUID? {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: Keys.defaultProfileID) else {
+                return nil
+            }
+            return UUID(uuidString: raw)
+        }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(newValue.uuidString, forKey: Keys.defaultProfileID)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.defaultProfileID)
+            }
+        }
+    }
+
+    /// Explicit opt-in. Launch never requests Accessibility; when the grant
+    /// is absent the default application is deferred and reported in Settings.
+    static var applyDefaultProfileAtLaunch: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.applyDefaultProfileAtLaunch) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.applyDefaultProfileAtLaunch) }
     }
 
     // MARK: - Software update recovery

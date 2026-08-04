@@ -42,12 +42,32 @@ final class NotchLayoutMonitor {
     private var isCollapsed: () -> Bool = { false }
 
     private var pendingMeasurement: Timer?
-    private var candidate: LayoutClassification.Digest?
+    private struct ItemMeasurement: Equatable {
+        let frame: CGRect
+        let visibility: ItemVisibility
+    }
+
+    private struct MeasurementDigest: Equatable {
+        let items: [ItemMeasurement]
+        let separatorHealth: SeparatorHealth
+        let toggleVisible: Bool
+
+        init(classification: LayoutClassification) {
+            items = classification.items.map {
+                ItemMeasurement(frame: $0.frame, visibility: $0.visibility)
+            }
+            separatorHealth = classification.separatorHealth
+            toggleVisible = classification.toggleVisible
+        }
+    }
+    private var candidate: MeasurementDigest?
+    private var confirmedMeasurement: MeasurementDigest?
     private var deferredRetries = 0
     private var observers: [NSObjectProtocol] = []
 
     enum MeasurementReason {
         case launch, expandSettled, collapseSettled, screenChanged, workspaceChanged, menuOpened, itemRecreated
+        case profileOperation
 
         var settleDelay: TimeInterval {
             switch self {
@@ -57,6 +77,7 @@ final class NotchLayoutMonitor {
             case .workspaceChanged: return 1.0
             case .menuOpened: return 0
             case .itemRecreated: return 0.5
+            case .profileOperation: return 0.35
             }
         }
     }
@@ -102,6 +123,41 @@ final class NotchLayoutMonitor {
         }
     }
 
+    /// Waits for the next confirmed classification after a caller requests a
+    /// profile operation. The timeout returns the last confirmed snapshot so a
+    /// transiently quiet window server degrades to a report instead of
+    /// hanging the Settings UI.
+    func requestConfirmedLayout(
+        timeout: TimeInterval = 3,
+        completion: @escaping (LayoutClassification?) -> Void
+    ) {
+        var observer: NSObjectProtocol?
+        var timer: Timer?
+        var finished = false
+
+        func finish(_ classification: LayoutClassification?) {
+            guard !finished else { return }
+            finished = true
+            if let observer {
+                NotificationCenter.default.removeObserver(observer)
+            }
+            timer?.invalidate()
+            completion(classification)
+        }
+
+        observer = NotificationCenter.default.addObserver(
+            forName: .pelmetLayoutDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            finish(self?.confirmed)
+        }
+        timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
+            finish(self?.confirmed)
+        }
+        requestMeasurement(reason: .profileOperation)
+    }
+
     private func measureNow() {
         pendingMeasurement = nil
 
@@ -131,13 +187,14 @@ final class NotchLayoutMonitor {
     }
 
     private func publish(_ classification: LayoutClassification) {
-        let digest = classification.digest
-        if digest == confirmed?.digest {
+        let digest = MeasurementDigest(classification: classification)
+        if digest == confirmedMeasurement {
             candidate = nil
             return
         }
         if digest == candidate {
             candidate = nil
+            confirmedMeasurement = digest
             confirmed = classification
             if let flag = ProcessInfo.processInfo.environment["PELMET_DEBUG_LAYOUT"] {
                 print("Pelmet layout: swallowed=\(classification.swallowedCount) offscreenLeft=\(classification.offscreenLeftCount) separator=\(classification.separatorHealth) toggleVisible=\(classification.toggleVisible)")

@@ -23,6 +23,9 @@ protocol StatusItemActivating: AnyObject {
     var canIdentify: Bool { get }
     /// True only when activation can actually run (permission granted).
     var canActivate: Bool { get }
+    /// True when a user has already granted Accessibility. Profile moves use
+    /// the same synthetic-event gate but do not enable one-click activation.
+    var canArrangeProfiles: Bool { get }
 
     /// Descriptors the Shelf deriver uses to make rows one-click
     /// activatable — empty unless activation can actually run. Tokens are
@@ -38,6 +41,10 @@ protocol StatusItemActivating: AnyObject {
     /// lands); an explicit user tap passes `false` and enables immediately.
     func offerOneClick(proactive: Bool)
     func refreshDirectory(reason: String)
+    func requestProfileDirectory(
+        completion: @escaping (DirectorySnapshot) -> Void
+    )
+    func endProfileDirectoryAccess()
     func activate(recordID: String, completion: @escaping (ActivationResult) -> Void)
 }
 
@@ -90,6 +97,7 @@ final class StatusItemActivationEngine: StatusItemActivating {
 
     var canIdentify: Bool { directory.fidelity == .identified }
     var canActivate: Bool { availability == .granted }
+    var canArrangeProfiles: Bool { AXIsProcessTrusted() }
 
     var activatableDescriptors: [EngineItemDescriptor] {
         guard canActivate else { return [] }
@@ -130,6 +138,12 @@ final class StatusItemActivationEngine: StatusItemActivating {
     private var healAttempts = 0
     private var axCache: [pid_t: (observations: [AXExtraObservation], stamp: Date)] = [:]
     private var slowPIDs: Set<pid_t> = []
+    private var profileDirectoryAccess = false
+    private struct ProfileDirectoryWaiter {
+        let requiresIdentity: Bool
+        let completion: (DirectorySnapshot) -> Void
+    }
+    private var profileDirectoryWaiters: [UUID: ProfileDirectoryWaiter] = [:]
     /// Live AX elements for the current directory's records (AXPress path).
     private(set) var elementForRecordID: [String: AXUIElement] = [:]
 
@@ -234,6 +248,29 @@ final class StatusItemActivationEngine: StatusItemActivating {
         rebuildDirectory()
     }
 
+    func requestProfileDirectory(
+        completion: @escaping (DirectorySnapshot) -> Void
+    ) {
+        profileDirectoryAccess = canArrangeProfiles
+        let waiterID = UUID()
+        profileDirectoryWaiters[waiterID] = ProfileDirectoryWaiter(
+            requiresIdentity: profileDirectoryAccess,
+            completion: completion
+        )
+        rebuildDirectory()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self,
+                  let waiter = self.profileDirectoryWaiters.removeValue(forKey: waiterID)
+            else { return }
+            waiter.completion(self.directory)
+        }
+    }
+
+    func endProfileDirectoryAccess() {
+        profileDirectoryAccess = false
+        profileDirectoryWaiters.removeAll()
+    }
+
     func activate(recordID: String, completion: @escaping (ActivationResult) -> Void) {
         ActivationExecutor.shared.activate(recordID: recordID, engine: self, completion: completion)
     }
@@ -288,7 +325,8 @@ final class StatusItemActivationEngine: StatusItemActivating {
         let reparented = Self.isReparented(items: items, controlCenterPID: controlCenterPID)
 
         let cached = freshCachedObservations()
-        if canActivate, !cached.isEmpty {
+        let canReadAccessibility = canActivate || profileDirectoryAccess
+        if canReadAccessibility, !cached.isEmpty {
             // Cached FRAMES rot the moment the layout moves (every
             // collapse/expand relocates every item) — re-read each cached
             // element's live position off-main, then publish.
@@ -307,7 +345,7 @@ final class StatusItemActivationEngine: StatusItemActivating {
             )
         }
 
-        if canActivate {
+        if canReadAccessibility {
             scheduleSweep(controlCenterPID: controlCenterPID, reparented: reparented)
         }
     }
@@ -446,7 +484,8 @@ final class StatusItemActivationEngine: StatusItemActivating {
         let unidentifiedSwallowed = records.contains {
             $0.visibility == .swallowedByNotch && $0.identity == nil
         }
-        if canActivate, unidentifiedSwallowed, !axCache.isEmpty, healAttempts < 2 {
+        if canActivate || profileDirectoryAccess, unidentifiedSwallowed,
+           !axCache.isEmpty, healAttempts < 2 {
             healAttempts += 1
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
                 self?.rebuildDirectory()
@@ -457,6 +496,13 @@ final class StatusItemActivationEngine: StatusItemActivating {
     private func publish(_ snapshot: DirectorySnapshot) {
         directory = snapshot
         onDirectoryChange?(snapshot)
+        let ready = profileDirectoryWaiters.filter { _, waiter in
+            !waiter.requiresIdentity || snapshot.fidelity == .identified
+        }
+        for (id, waiter) in ready {
+            profileDirectoryWaiters.removeValue(forKey: id)
+            waiter.completion(snapshot)
+        }
     }
 
     // MARK: - AX sweep

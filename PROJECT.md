@@ -113,7 +113,7 @@ gracefully:
 *Goal: from tidy to fast.*
 
 - **Quick Search (⌘ space-style):** type to find and activate any menu bar item, hidden or not
-- **Profiles:** named icon arrangements — "Work", "Presentation", "Travel" — switchable manually or by hotkey
+- **Profiles (0.5.0):** named icon arrangements such as "Work", "Presentation", and "Travel", switchable from Settings or the chevron menu, with optional default application at launch
 - **Triggers:** auto-switch profiles based on Focus mode, connected display, battery state, or active app
 - **Per-item rules:** always show, always hide, show only when updating
 - **Presentation mode:** one action hides everything sensitive before screen sharing
