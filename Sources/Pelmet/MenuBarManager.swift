@@ -560,10 +560,12 @@ final class MenuBarManager: NSObject {
         if plan.attemptOneClickOffer {
             OnboardingController.shared.maybeOfferOneClick(toggle: toggleItem)
         }
-        // Last in the serialized chain: the star nudge is layout-independent and
-        // self-gates on its policy, so it only appears days into real use and
-        // never covers a tip or the release-notes window.
+        // Last in the serialized chain: the community nudges are
+        // layout-independent and self-gate on their policies, so they only
+        // appear after real use and never cover a tip or release notes. The
+        // support nudge also waits for the star nudge to finish and cools down.
         StarNudgeWindowController.shared.maybePresent()
+        SupportNudgeWindowController.shared.maybePresent()
     }
 
     /// The toggle is the escape hatch — if it ever gets swallowed the user
@@ -871,6 +873,14 @@ final class MenuBarManager: NSObject {
             menu.addItem(updatesEntry)
         }
 
+        let supportEntry = NSMenuItem(
+            title: "Support Pelmet…",
+            action: #selector(openSupport),
+            keyEquivalent: ""
+        )
+        supportEntry.target = self
+        menu.addItem(supportEntry)
+
         let settingsEntry = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
         settingsEntry.target = self
         menu.addItem(settingsEntry)
@@ -967,6 +977,10 @@ final class MenuBarManager: NSObject {
 
     @objc private func openSettings() {
         SettingsWindowController.shared.show()
+    }
+
+    @objc private func openSupport() {
+        NSWorkspace.shared.open(AppLinks.support)
     }
 
     @objc private func openMakeRoom() {

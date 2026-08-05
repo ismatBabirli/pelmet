@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-05
+
+### Added
+
+- **Support Pelmet**: a Polar support link is available in the About pane and
+  chevron menu, with a gentle in-app prompt after the GitHub star prompt. The
+  prompt opens hosted Polar checkout, is rate-limited, and can be dismissed
+  permanently.
+
 ## [0.5.0] - 2026-08-04
 
 ### Added

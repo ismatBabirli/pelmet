@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hadExistingPreferences: hadExistingPreferences
         )
 
-        // Start the "after some time" clock for the star-on-GitHub nudge exactly
+        // Start the "after some time" clock for the community nudges exactly
         // once. Existing users begin counting from their first launch of this
         // build; they have already shown engagement, so that is acceptable.
         if Preferences.firstLaunchAt == nil {

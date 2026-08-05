@@ -2,11 +2,12 @@ import AppKit
 import PelmetCore
 import SwiftUI
 
-/// Owns Pelmet's single, reusable "star us on GitHub" nudge window and the gate
-/// that keeps it timed, rate-limited, and never stacked on another surface.
-final class StarNudgeWindowController: NSWindowController, NSWindowDelegate {
+/// Owns Pelmet's single, reusable support nudge window and its gentle gate.
+/// The nudge only follows a completed star ask, so the two requests never
+/// appear together or back-to-back for a new user.
+final class SupportNudgeWindowController: NSWindowController, NSWindowDelegate {
 
-    static let shared = StarNudgeWindowController()
+    static let shared = SupportNudgeWindowController()
 
     private var isTrackedAsOpen = false
     private var hasCenteredWindow = false
@@ -15,33 +16,34 @@ final class StarNudgeWindowController: NSWindowController, NSWindowDelegate {
         self.init(window: nil)
     }
 
-    var isVisible: Bool { window?.isVisible == true }
-
     /// True when the QA override is set: shows the nudge immediately, bypassing
-    /// the time/usage gate, and without advancing the counters or the cap.
+    /// timing and usage gates without advancing the counters or cap.
     private var isForced: Bool {
-        ProcessInfo.processInfo.environment["PELMET_FORCE_STAR_NUDGE"] != nil
+        ProcessInfo.processInfo.environment["PELMET_FORCE_SUPPORT_NUDGE"] != nil
     }
 
-    /// The single entry point. Presents the nudge only when the policy allows it
-    /// (or the QA override is set) and no other launch surface is up. Safe to
-    /// call on every onboarding pass; it self-gates.
+    /// Presents the support nudge when its policy allows it and no other launch
+    /// surface is active. Safe to call on every onboarding pass.
     func maybePresent() {
         guard window?.isVisible != true else { return }
 
         if !isForced {
-            guard StarNudgePolicy.shouldShow(
+            guard SupportNudgePolicy.shouldShow(
                 firstLaunchAt: Preferences.firstLaunchAt,
                 hasManagedItems: Preferences.hasEverManagedItems,
-                dismissedPermanently: Preferences.starNudgeDismissed,
-                lastShownAt: Preferences.starNudgeLastShownAt,
-                showCount: Preferences.starNudgeShowCount,
+                starNudgeDismissed: Preferences.starNudgeDismissed,
+                starNudgeLastShownAt: Preferences.starNudgeLastShownAt,
+                dismissedPermanently: Preferences.supportNudgeDismissed,
+                lastShownAt: Preferences.supportNudgeLastShownAt,
+                showCount: Preferences.supportNudgeShowCount,
                 now: Date()
             ) else { return }
         }
 
-        // Never cover release notes, a crash alert, or an onboarding tip.
-        guard !WhatsNewWindowController.shared.isPendingOrVisible,
+        // Never cover the star prompt, release notes, a crash alert, or an
+        // onboarding tip. The star window re-runs this check after closing.
+        guard !StarNudgeWindowController.shared.isVisible,
+              !WhatsNewWindowController.shared.isPendingOrVisible,
               NSApp.modalWindow == nil,
               OnboardingController.shared.activeTipWindow == nil
         else { return }
@@ -53,8 +55,8 @@ final class StarNudgeWindowController: NSWindowController, NSWindowDelegate {
         configureWindowIfNeeded()
         guard let window else { return }
 
-        let hosting = NSHostingController(rootView: StarNudgeView(
-            onStar: { [weak self] in self?.handleStar() },
+        let hosting = NSHostingController(rootView: SupportNudgeView(
+            onSupport: { [weak self] in self?.handleSupport() },
             onLater: { [weak self] in self?.window?.performClose(nil) },
             onDontAsk: { [weak self] in self?.handleDontAsk() }
         ))
@@ -76,40 +78,37 @@ final class StarNudgeWindowController: NSWindowController, NSWindowDelegate {
             isTrackedAsOpen = true
             UIActivityTracker.shared.surfaceOpened()
         }
-        // The QA override never burns a real ask.
         if !isForced { recordShow() }
     }
 
-    /// Advances the rate-limit state once the nudge is actually on screen, then
-    /// retires it for good if this was the last allowed ask.
     private func recordShow() {
-        Preferences.starNudgeLastShownAt = Date()
-        Preferences.starNudgeShowCount += 1
-        if Preferences.starNudgeShowCount >= StarNudgePolicy.maxShows {
-            Preferences.starNudgeDismissed = true
+        Preferences.supportNudgeLastShownAt = Date()
+        Preferences.supportNudgeShowCount += 1
+        if Preferences.supportNudgeShowCount >= SupportNudgePolicy.maxShows {
+            Preferences.supportNudgeDismissed = true
         }
     }
 
-    private func handleStar() {
-        NSWorkspace.shared.open(AppLinks.repo)
-        Preferences.starNudgeDismissed = true
+    private func handleSupport() {
+        NSWorkspace.shared.open(AppLinks.support)
+        Preferences.supportNudgeDismissed = true
         window?.performClose(nil)
     }
 
     private func handleDontAsk() {
-        Preferences.starNudgeDismissed = true
+        Preferences.supportNudgeDismissed = true
         window?.performClose(nil)
     }
 
     private func configureWindowIfNeeded() {
         guard window == nil else { return }
-        let window = StarNudgeWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 360, height: 240),
+        let window = SupportNudgeWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 260),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Enjoying Pelmet?"
+        window.title = "Support Pelmet"
         window.isReleasedWhenClosed = false
         window.collectionBehavior = [.moveToActiveSpace]
         window.delegate = self
@@ -128,9 +127,9 @@ final class StarNudgeWindowController: NSWindowController, NSWindowDelegate {
     }
 }
 
-/// Escape closes the nudge (treated as "maybe later") without needing a hidden
-/// SwiftUI button just to own the cancel shortcut.
-private final class StarNudgeWindow: NSWindow {
+/// Escape closes the support nudge (treated as "maybe later") without needing
+/// a hidden SwiftUI button just to own the cancel shortcut.
+private final class SupportNudgeWindow: NSWindow {
     override func cancelOperation(_ sender: Any?) {
         performClose(sender)
     }
