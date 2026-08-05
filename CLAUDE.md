@@ -59,6 +59,13 @@ SwiftUI settings windows. Sandbox is intentionally OFF, hardened runtime ON, and
   reports stay local: Pelmet only opens a prefilled GitHub issue the user submits.
 - Rationale and full list: `PROJECT.md` § "5. Non-Goals" and § "6. Technical Foundation".
 
+## Cross-repo
+
+- The website (`ismatBabirli/pelmet.xyz`, live at https://pelmet.xyz) restates the
+  version, changelog, features, permission model and telemetry schema this repo
+  owns. Changing any of those here usually needs a paired site PR: read
+  `AGENTS.md` for the trigger table and the cross-linking rule.
+
 ## Etiquette
 
 - User-visible changes get a `CHANGELOG.md` entry under `[Unreleased]` (Keep a Changelog).
