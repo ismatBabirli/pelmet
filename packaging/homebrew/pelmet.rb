@@ -14,7 +14,7 @@ cask "pelmet" do
       verified: "github.com/ismatBabirli/pelmet/"
   name "Pelmet"
   desc "Menu bar organizer that reclaims the icons a MacBook notch hides"
-  homepage "https://github.com/ismatBabirli/pelmet"
+  homepage "https://pelmet.xyz/"
 
   livecheck do
     url :url
