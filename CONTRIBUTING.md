@@ -6,6 +6,7 @@ deliberately lightweight — no forms, no committees.
 ## The short version
 
 - **Found a bug or have an idea?** [Open an issue](https://github.com/ismatBabirli/pelmet/issues).
+- **Want to support Pelmet?** Make a [one-time or monthly contribution through Polar](https://buy.polar.sh/polar_cl_dmIB7LsoFtTdEnqBk5PBbK5OgB2v5Nw4Udw5d13Pi99).
 - **Small fix** (typo, small bug, doc tweak)? Send a PR directly.
 - **Bigger change** (new feature, refactor)? Open an issue first so we can talk
   it through — and skim [PROJECT.md](PROJECT.md), it may already be on the roadmap.

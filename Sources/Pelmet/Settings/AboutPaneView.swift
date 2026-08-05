@@ -47,7 +47,7 @@ struct AboutPaneView: View {
 
             // Uniform, System-Settings-style rows: a tinted glyph, a title, and
             // a trailing hint (an up-right arrow leaves for the browser, a
-            // chevron opens an in-app window). One GitHub link, not two.
+            // chevron opens an in-app window).
             Section {
                 AboutRow(
                     title: "Star on GitHub",
@@ -56,6 +56,14 @@ struct AboutPaneView: View {
                     tint: .yellow,
                     opensExternally: true
                 ) { openURL(AppLinks.repo) }
+
+                AboutRow(
+                    title: "Support Pelmet",
+                    subtitle: "Help keep Pelmet free and open source.",
+                    systemImage: "heart.fill",
+                    tint: .pink,
+                    opensExternally: true
+                ) { openURL(AppLinks.support) }
 
                 AboutRow(title: "What's New", systemImage: "sparkles", tint: .accentColor) {
                     WhatsNewWindowController.shared.showManually()

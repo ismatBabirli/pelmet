@@ -188,6 +188,12 @@ Bug reports, ideas, and small PRs are very welcome — see
 [CONTRIBUTING.md](CONTRIBUTING.md) for a two-minute guide and a map of the
 codebase.
 
+## Support
+
+Pelmet is free and open source. If it helps keep your menu bar tidy, you can
+support maintenance, macOS compatibility work, and new features with a
+[one-time or monthly contribution through Polar](https://buy.polar.sh/polar_cl_dmIB7LsoFtTdEnqBk5PBbK5OgB2v5Nw4Udw5d13Pi99).
+
 ## License
 
 [MIT](LICENSE) © 2026 Ismat Babirli
