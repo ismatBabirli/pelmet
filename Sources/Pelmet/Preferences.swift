@@ -38,6 +38,9 @@ enum Preferences {
         static let starNudgeLastShownAt = "starNudgeLastShownAt"
         static let starNudgeShowCount = "starNudgeShowCount"
         static let starNudgeDismissed = "starNudgeDismissed"
+        static let supportNudgeLastShownAt = "supportNudgeLastShownAt"
+        static let supportNudgeShowCount = "supportNudgeShowCount"
+        static let supportNudgeDismissed = "supportNudgeDismissed"
         static let menuBarProfiles = "menuBarProfiles"
         static let activeProfileID = "activeProfileID"
         static let defaultProfileID = "defaultProfileID"
@@ -285,11 +288,11 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: Keys.lastAcknowledgedWhatsNewVersion) }
     }
 
-    // MARK: - Star-on-GitHub nudge
+    // MARK: - Community nudges
 
     /// When the app first launched, seeded once at startup. Anchors the "after
-    /// some time" delay before the star nudge may appear. A usage fact, not an
-    /// onboarding tip, so `resetOnboardingFlags()` leaves it be.
+    /// some time" delay before the community nudges may appear. A usage fact,
+    /// not an onboarding tip, so `resetOnboardingFlags()` leaves it be.
     static var firstLaunchAt: Date? {
         get { UserDefaults.standard.object(forKey: Keys.firstLaunchAt) as? Date }
         set { UserDefaults.standard.set(newValue, forKey: Keys.firstLaunchAt) }
@@ -313,6 +316,24 @@ enum Preferences {
     static var starNudgeDismissed: Bool {
         get { UserDefaults.standard.bool(forKey: Keys.starNudgeDismissed) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.starNudgeDismissed) }
+    }
+
+    /// When the support nudge was last shown; nil until the first show.
+    static var supportNudgeLastShownAt: Date? {
+        get { UserDefaults.standard.object(forKey: Keys.supportNudgeLastShownAt) as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.supportNudgeLastShownAt) }
+    }
+
+    /// How many times the support nudge has been shown, for the hard cap.
+    static var supportNudgeShowCount: Int {
+        get { UserDefaults.standard.integer(forKey: Keys.supportNudgeShowCount) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.supportNudgeShowCount) }
+    }
+
+    /// Set once the user supports Pelmet, opts out, or the show cap is reached.
+    static var supportNudgeDismissed: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.supportNudgeDismissed) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.supportNudgeDismissed) }
     }
 
     /// Must be sampled before menu setup writes status-item positions. A real
