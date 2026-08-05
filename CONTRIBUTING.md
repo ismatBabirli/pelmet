@@ -54,26 +54,28 @@ geometry lives in `Sources/PelmetCore/`.
 | `Preferences.swift` | UserDefaults keys shared between AppKit and SwiftUI |
 | `Settings/SettingsRootView.swift` | System Settings-style sidebar + detail layout |
 | `Settings/SettingsPane.swift` | Pane descriptors: titles, icons, notch-gated availability |
-| `Settings/*PaneView.swift` | The panes: General, Menu Bar Space, One-Click Access, Profiles |
+| `Settings/*PaneView.swift` | The panes: General, Menu Bar Space, One-Click Access, About |
 | `Settings/SettingsWindowController.swift` | Hosts the settings window from an accessory app |
-| `Profiles/ProfileController.swift` | Profile persistence, capture, matching, and best-effort command drags |
 | `Shelf/` | The blurred "+N hidden icons" panel: panel, controller, SwiftUI rows, owner resolution |
-| `Activation/` | Opt-in Accessibility engine: one-click activation of real status items (AX reader, synthetic events, permission monitor) |
+| `Activation/` | Opt-in Accessibility engine: pointer-safe status-item actions, AX reader, and permission monitor |
 | `Updates/UpdaterController.swift` | Sparkle facade — real under `#if canImport(Sparkle)` (XcodeGen build), inert stub in plain SPM |
 | `../PelmetCore/MenuBarLayoutClassifier.swift` | Pure geometry: which icons is macOS hiding at the notch |
 | `../PelmetCore/ShelfContent.swift`, `ShelfPlacement.swift`, `TipPlacement.swift`, `ScreenCoordinates.swift` | Pure Shelf/tip content derivation and placement geometry |
-| `../PelmetCore/Activation/` | Pure activation planning: `ActivationPlanner`, `ActivationSession`, `StatusItemCorrelator`, `QuiescencePolicy` |
+| `../PelmetCore/Activation/` | Pure activation action selection, status-item correlation, and quiescence policy |
 
 Three ground rules:
 
 1. **The zero-permission core is sacred.** The default experience must never
    require Screen Recording or Accessibility. Features that need a permission
    (like one-click access) are opt-in only.
-2. **Sparkle is the only dependency** — and only in the XcodeGen app bundle,
+2. **Never control the user's pointer.** Pelmet may invoke actions explicitly
+   advertised by macOS Accessibility, but must not create or post mouse events,
+   warp the cursor, or rearrange third-party status items automatically.
+3. **Sparkle is the only dependency** — and only in the XcodeGen app bundle,
    behind `#if canImport(Sparkle)`; the plain SPM build stays dependency-free.
    Think twice before adding another. (Telemetry is raw `URLSession`, not a new
    dependency.)
-3. **Telemetry is frozen by documentation.** The daily ping sends the fields in
+4. **Telemetry is frozen by documentation.** The daily ping sends the fields in
    [docs/TELEMETRY.md](docs/TELEMETRY.md), nothing more. Any PR that adds or
    changes a field must update that document and `CHANGELOG.md`, and must update
    the schema test in `Tests/PelmetCoreTests` deliberately. Nothing from the

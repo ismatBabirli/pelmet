@@ -34,6 +34,12 @@ jobs:
           restore-keys: spm-${{ runner.os }}-
       - name: Toolchain versions
         run: swift --version
+      - name: Enforce pointer-safe source
+        run: |
+          if git grep -nE 'CGWarpMouseCursorPosition|CGDisplayMoveCursorToPoint|CGAssociateMouseAndMouseCursorPosition|CGEventCreateMouseEvent|CGPostMouseEvent|CGEventPost(ToPid)?|CGEvent\(mouseEventSource:|\.post\(tap:|\.postToPid\(' -- Sources; then
+            echo "Pointer-driving and synthetic-input APIs are forbidden in Pelmet sources."
+            exit 1
+          fi
       - name: Test
         run: swift test
 

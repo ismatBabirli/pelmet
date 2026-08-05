@@ -21,9 +21,10 @@ struct OneClickAccessPaneView: View {
                     }
                 ))
             } footer: {
-                Text("Pelmet will read which app owns each menu bar icon and simulate "
-                    + "clicks to open them. It never reads your screen. Turn this off any "
-                    + "time; everything else keeps working.")
+                Text("Pelmet reads which app owns each menu bar icon and asks compatible "
+                    + "icons to open through macOS Accessibility. It never creates mouse "
+                    + "events, moves your pointer, or reads your screen. Icons that do not "
+                    + "offer a safe action remain unchanged.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

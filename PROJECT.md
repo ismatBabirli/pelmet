@@ -26,7 +26,7 @@ Pelmet occupies a deliberate position in that landscape:
 1. **Trust first.** The core hide/show feature works with **zero special permissions** — no Screen Recording, no Accessibility. Every feature that needs a permission is opt-in, clearly explained, and degradable: decline the permission and the app still works.
 2. **Beauty as a feature.** Fluid animations, a gorgeous frosted panel under the notch, thoughtful micro-interactions. Open-source utilities don't have to look utilitarian.
 3. **Actionable, not just tidy.** Hidden icons shouldn't just be stored — they should be one hover, hotkey, or search away.
-4. **Simple by default, powerful by choice.** A first-time user needs to understand the app in 30 seconds. Power features (profiles, triggers, rules) live one layer deeper.
+4. **Simple by default, powerful by choice.** A first-time user needs to understand the app in 30 seconds. Power features (rules, presentation modes, search) live one layer deeper.
 
 ## 3. Core Concepts
 
@@ -38,7 +38,7 @@ Pelmet occupies a deliberate position in that landscape:
 
 - **The divider (╱):** everything the user ⌘-drags to its left is managed by Pelmet.
 - **Collapse mechanism:** the divider inflates to ~4,000 pt (macOS caps status-item windows near 5,000 pt), pushing managed items past the screen edge. Battle-tested (Hidden Bar, Dozer), permission-free.
-- **The Shelf (phase 2, shipped in 0.1.0):** a floating, blurred panel below the notch that shows hidden icons live and forwards clicks — so items are usable *without* rearranging the menu bar.
+- **The Shelf (phase 2, shipped in 0.1.0):** a floating, blurred panel below the notch that shows hidden icons and can ask compatible items to open — without rearranging the menu bar or moving the pointer.
 
 ## 4. Feature Plan by Phase
 
@@ -81,9 +81,11 @@ gracefully:
   owning app forward and offers the opt-in.
 - **Tier 1 — opt-in Accessibility.** One toggle enables reading which app
   owns each item (restoring identity on Tahoe) and **single-click activation**
-  of the real item via synthetic events, with a make-room/drag-to-expose
-  fallback for items in the notch dead zone. Plain-language consent; never
-  reads the screen; fully degradable — turn it off and Tier 0 keeps working.
+  when the item advertises `AXShowMenu` or `AXPress`. Pelmet never synthesizes
+  mouse events, moves the pointer, or rearranges third-party status items;
+  incompatible items remain unchanged and direct the user to Make Room.
+  Plain-language consent; never reads the screen; fully degradable — turn it
+  off and Tier 0 keeps working.
 
 > **Why not ScreenCaptureKit?** The original spec captured live item pixels.
 > Verified dead end (mid-2026): Screen Recording brings recurring
@@ -112,9 +114,7 @@ gracefully:
 
 *Goal: from tidy to fast.*
 
-- **Quick Search (⌘ space-style):** type to find and activate any menu bar item, hidden or not
-- **Profiles (0.5.0):** named icon arrangements such as "Work", "Presentation", and "Travel", switchable from Settings or the chevron menu, with optional default application at launch
-- **Triggers:** auto-switch profiles based on Focus mode, connected display, battery state, or active app
+- **Quick Search (⌘ space-style):** type to find compatible menu bar items and invoke their advertised Accessibility actions
 - **Per-item rules:** always show, always hide, show only when updating
 - **Presentation mode:** one action hides everything sensitive before screen sharing
 
@@ -124,7 +124,7 @@ gracefully:
 
 - Localization (community-driven)
 - Full accessibility pass (VoiceOver, Reduce Motion, keyboard-only use)
-- Scripting hooks: URL scheme + Shortcuts actions (`pelmet://toggle`, `pelmet://profile/work`)
+- Scripting hooks: URL scheme + Shortcuts actions (`pelmet://toggle`)
 - Contributor docs, good-first-issue backlog, architecture guide
 - Public roadmap voting via GitHub Discussions
 
@@ -132,6 +132,7 @@ gracefully:
 
 - **No menu bar "styling"** (tints, borders) in early phases — Ice does this well; we stay focused
 - **No Screen Recording, ever** — the Shelf renders app icons/names, not captured pixels; the purple indicator and re-approval nags are exactly what users flee
+- **No synthetic pointer control or automatic third-party item rearrangement** — unsupported actions fail safely and leave the user's pointer and menu bar order alone
 - **No Mac App Store initially** — the sandbox is incompatible with the Shelf; direct + Homebrew distribution instead
 - **No accounts, no tracking SDKs, no hidden network calls.** Pelmet talks to exactly two endpoints: Sparkle update checks and an optional anonymous daily usage ping (opt-out, announced in-app before the first send, every field documented in [docs/TELEMETRY.md](docs/TELEMETRY.md)). Crash reports never leave the Mac unless the user files one.
 
@@ -144,7 +145,7 @@ gracefully:
 | Hide mechanism | `NSStatusItem` expanding spacer (no private APIs) |
 | Shelf rendering | App icon + name from `NSRunningApplication` (no screen capture) |
 | Item identity | `CGWindowListCopyWindowInfo` owner PID (≤ Sequoia); `kAXExtrasMenuBarAttribute` sweep (Tahoe, opt-in Accessibility) |
-| Click forwarding | Synthetic `CGEvent` at real item coordinates + drag-to-expose fallback (opt-in Accessibility) |
+| One-click access | Advertised `AXShowMenu` or `AXPress` actions only (opt-in Accessibility; no synthetic input) |
 | Hotkeys | Carbon `RegisterEventHotKey` (permission-free) |
 | Updates | Sparkle 2 |
 | CI/CD | GitHub Actions: build → sign → notarize → release |

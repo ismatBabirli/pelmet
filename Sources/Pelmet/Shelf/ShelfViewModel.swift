@@ -8,7 +8,7 @@ enum ShelfTier {
     case owners
     /// Ownership unknown (Tahoe without the engine grant).
     case anonymous
-    /// Engine-enriched rows — one click opens the real item.
+    /// Engine-enriched rows — compatible items open through Accessibility.
     case engine
 }
 
@@ -133,8 +133,8 @@ final class ShelfViewModel: ObservableObject {
             return "Pelmet needs the Accessibility permission to open items."
         case .itemVanished:
             return "That icon just disappeared. It may have been closed."
-        case .blockedByNotch, .noRoomToExpose:
-            return "Couldn't open it. The bar is too full. Try Make Room."
+        case .actionUnsupported:
+            return "This icon does not offer a pointer-safe way to open it. Try Make Room."
         case .busy, .userInteracting:
             return "Busy. Try again in a moment."
         case .interrupted, .timedOut:

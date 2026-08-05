@@ -94,7 +94,6 @@ struct SettingsRootView: View {
         case .general: GeneralPaneView()
         case .menuBarSpace: MenuBarSpacePaneView()
         case .oneClickAccess: OneClickAccessPaneView()
-        case .profiles: ProfilesPaneView()
         case .about: AboutPaneView()
         }
     }

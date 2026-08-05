@@ -67,7 +67,6 @@ final class NotchLayoutMonitor {
 
     enum MeasurementReason {
         case launch, expandSettled, collapseSettled, screenChanged, workspaceChanged, menuOpened, itemRecreated
-        case profileOperation
 
         var settleDelay: TimeInterval {
             switch self {
@@ -77,7 +76,6 @@ final class NotchLayoutMonitor {
             case .workspaceChanged: return 1.0
             case .menuOpened: return 0
             case .itemRecreated: return 0.5
-            case .profileOperation: return 0.35
             }
         }
     }
@@ -121,41 +119,6 @@ final class NotchLayoutMonitor {
         pendingMeasurement = Timer.scheduledTimer(withTimeInterval: max(delay, 0.01), repeats: false) { [weak self] _ in
             self?.measureNow()
         }
-    }
-
-    /// Waits for the next confirmed classification after a caller requests a
-    /// profile operation. The timeout returns the last confirmed snapshot so a
-    /// transiently quiet window server degrades to a report instead of
-    /// hanging the Settings UI.
-    func requestConfirmedLayout(
-        timeout: TimeInterval = 3,
-        completion: @escaping (LayoutClassification?) -> Void
-    ) {
-        var observer: NSObjectProtocol?
-        var timer: Timer?
-        var finished = false
-
-        func finish(_ classification: LayoutClassification?) {
-            guard !finished else { return }
-            finished = true
-            if let observer {
-                NotificationCenter.default.removeObserver(observer)
-            }
-            timer?.invalidate()
-            completion(classification)
-        }
-
-        observer = NotificationCenter.default.addObserver(
-            forName: .pelmetLayoutDidChange,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            finish(self?.confirmed)
-        }
-        timer = Timer.scheduledTimer(withTimeInterval: timeout, repeats: false) { [weak self] _ in
-            finish(self?.confirmed)
-        }
-        requestMeasurement(reason: .profileOperation)
     }
 
     private func measureNow() {
