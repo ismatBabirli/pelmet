@@ -155,131 +155,6 @@ final class MenuBarManager: NSObject {
         hoverMonitor.stop()
     }
 
-    // MARK: - Profiles
-
-    /// Temporarily expands the bar and waits for a fresh layout before a
-    /// profile capture or apply. The context restores the user's prior state.
-    func beginProfileOperation(
-        completion: @escaping (ProfileOperationContext, LayoutClassification?) -> Void
-    ) {
-        let context = ProfileOperationContext(wasCollapsed: isCollapsed)
-        if context.wasCollapsed {
-            setExpanded(persistState: false, scheduleRehide: false)
-        }
-        NotchLayoutMonitor.shared.requestConfirmedLayout { [weak self] classification in
-            guard let self else { return completion(context, nil) }
-            completion(context, classification ?? self.latestClassification)
-        }
-    }
-
-    func endProfileOperation(_ context: ProfileOperationContext) {
-        shelfEngine.endProfileDirectoryAccess()
-        if context.wasCollapsed {
-            collapse()
-        } else {
-            setExpanded(persistState: false, scheduleRehide: false)
-        }
-    }
-
-    /// Converts the engine's latest identified directory into profile
-    /// candidates. The divider itself remains Pelmet-owned and is never part
-    /// of a profile.
-    func profileSnapshot(
-        using classification: LayoutClassification
-    ) -> ProfileBarSnapshot {
-        profileSnapshot(using: classification, directory: shelfEngine.directory)
-    }
-
-    func profileSnapshot(
-        using classification: LayoutClassification,
-        directory: DirectorySnapshot
-    ) -> ProfileBarSnapshot {
-        let separatorFrame = separatorItem?.button?.window?.frame ?? .zero
-        let records = directory.records
-            .filter { $0.visibility != .suspectedGhost }
-            .sorted { $0.frame.minX < $1.frame.minX }
-
-        var occurrencesByBundle: [String: Int] = [:]
-        var candidates: [ProfileItemCandidate] = []
-        for (order, record) in records.enumerated() {
-            guard let identity = record.identity,
-                  let bundleID = identity.bundleIdentifier
-            else { continue }
-
-            let title = identity.axTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let occurrence = occurrencesByBundle[bundleID, default: 0]
-            occurrencesByBundle[bundleID] = occurrence + 1
-            let key = ProfileItemKey(
-                bundleIdentifier: bundleID,
-                accessibilityTitle: title?.isEmpty == false ? title : nil,
-                occurrence: occurrence
-            )
-            let displayName = title?.isEmpty == false ? title! : identity.appName
-            let side: ProfileItemSide = record.frame.maxX <= separatorFrame.minX
-                ? .managed
-                : .alwaysVisible
-            candidates.append(ProfileItemCandidate(
-                key: key,
-                displayName: displayName,
-                side: side,
-                order: order,
-                frame: record.frame
-            ))
-        }
-
-        let identifiedCount = candidates.count
-        let visibleRecords = classification.items.filter {
-            $0.visibility != .suspectedGhost
-        }.count
-        return ProfileBarSnapshot(
-            candidates: candidates,
-            unidentifiedCount: max(0, visibleRecords - identifiedCount)
-        )
-    }
-
-    /// Returns an insertion point immediately to the left of the next item in
-    /// the desired side/order. With no right neighbor, the item is placed next
-    /// to Pelmet's divider or toggle, preserving the two-sided invariant.
-    func profileTargetPoint(
-        side: ProfileItemSide,
-        rightNeighbor: ProfileItemCandidate?
-    ) -> CGPoint? {
-        guard let separatorFrame = separatorItem?.button?.window?.frame else { return nil }
-        let toggleFrame = toggleItem?.button?.window?.frame
-        let x: CGFloat
-        let y: CGFloat
-        if let rightNeighbor {
-            x = rightNeighbor.frame.minX - 6
-            y = rightNeighbor.frame.midY
-        } else {
-            switch side {
-            case .managed:
-                x = separatorFrame.minX - 6
-                y = separatorFrame.midY
-            case .alwaysVisible:
-                guard let toggleFrame else { return nil }
-                x = toggleFrame.minX - 6
-                y = toggleFrame.midY
-            }
-        }
-        return CGPoint(x: x, y: y)
-    }
-
-    /// The profile coordinator owns sequencing and reporting; this helper
-    /// performs one guarded synthetic command-drag off the main thread.
-    func performProfileDrag(
-        from: CGPoint,
-        to: CGPoint,
-        completion: @escaping (Bool) -> Void
-    ) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            let success = SyntheticEventPoster().commandDrag(fromAppKit: from, toAppKit: to)
-            DispatchQueue.main.async {
-                completion(success)
-            }
-        }
-    }
-
     /// Sparkle's scheduled update UI is deliberately replaced by a persistent
     /// menu-bar cue. Binding after both services initialize also replays the
     /// current value, so an update found during launch cannot be missed.
@@ -655,13 +530,6 @@ final class MenuBarManager: NSObject {
         expand(scheduleRehide: false)
     }
 
-    /// Pelmet's own status-item window frames — excluded from activation
-    /// targets and drag neighbors.
-    var ownItemFrames: [CGRect] {
-        [separatorItem?.button?.window?.frame, toggleItem?.button?.window?.frame]
-            .compactMap { $0 }
-    }
-
     /// State is conveyed by the chevron glyph and plain monochrome text — never
     /// a colored dot. Small colored dots in the menu bar are macOS privacy
     /// vocabulary (green = camera, orange = mic, purple = screen capture).
@@ -806,43 +674,6 @@ final class MenuBarManager: NSObject {
         resetEntry.target = self
         menu.addItem(resetEntry)
 
-        let profilesEntry = NSMenuItem(title: "Profiles", action: nil, keyEquivalent: "")
-        let profilesMenu = NSMenu()
-        profilesMenu.autoenablesItems = false
-        if ProfileController.shared.profiles.isEmpty {
-            let manage = NSMenuItem(
-                title: "Create Profile…",
-                action: #selector(openProfilesSettings),
-                keyEquivalent: ""
-            )
-            manage.target = self
-            profilesMenu.addItem(manage)
-        } else {
-            for profile in ProfileController.shared.profiles {
-                let profileItem = NSMenuItem(
-                    title: profile.name,
-                    action: #selector(applyProfileFromMenu(_:)),
-                    keyEquivalent: ""
-                )
-                profileItem.target = self
-                profileItem.representedObject = profile.id.uuidString
-                profileItem.state = ProfileController.shared.activeProfileID == profile.id
-                    ? .on
-                    : .off
-                profilesMenu.addItem(profileItem)
-            }
-            profilesMenu.addItem(.separator())
-            let manage = NSMenuItem(
-                title: "Manage Profiles…",
-                action: #selector(openProfilesSettings),
-                keyEquivalent: ""
-            )
-            manage.target = self
-            profilesMenu.addItem(manage)
-        }
-        profilesEntry.submenu = profilesMenu
-        menu.addItem(profilesEntry)
-
         // A permanent path to enable one-click open — survives a dismissed or
         // never-seen onboarding popover. Only where it's relevant (notched Mac,
         // not yet granted).
@@ -906,17 +737,6 @@ final class MenuBarManager: NSObject {
     }
 
     @objc private func menuToggle() { toggle() }
-
-    @objc private func applyProfileFromMenu(_ sender: NSMenuItem) {
-        guard let rawID = sender.representedObject as? String,
-              let profileID = UUID(uuidString: rawID)
-        else { return }
-        ProfileController.shared.apply(profileID) { _ in }
-    }
-
-    @objc private func openProfilesSettings() {
-        SettingsWindowController.shared.show(pane: .profiles)
-    }
 
     @objc private func enableOneClickFromMenu() {
         shelfEngine.offerOneClick(proactive: false)

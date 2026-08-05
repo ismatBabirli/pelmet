@@ -37,7 +37,7 @@ struct QuiescencePolicyTests {
     }
 
     @Test func testRecentInputWaits() {
-        // The user just clicked a menu entry — don't hijack the cursor yet.
+        // The user just clicked a menu entry — don't re-hide the bar yet.
         #expect(decide(secondsSinceLastInput: 0.4) == .wait)
     }
 

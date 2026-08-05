@@ -182,12 +182,9 @@ final class ShelfPanelController {
             matching: [.leftMouseDown, .rightMouseDown]
         ) { [weak self] event in
             guard let self else { return }
-            // Our own synthetic events (activation clicks, the post-session
-            // restore drag) land in other apps and a global monitor sees
-            // them. Never treat those as a dismiss — they carry the poster's
-            // source tag, and mid-activation nothing dismisses at all.
+            // Keep the panel stable while a pointer-free Accessibility action
+            // is in flight.
             if ActivationExecutor.shared.isActivating { return }
-            if Self.isPelmetSynthetic(event) { return }
             if let toggleWindow = self.anchorButton?.window,
                toggleWindow.frame.contains(NSEvent.mouseLocation) { return }
             self.hide()
@@ -197,7 +194,6 @@ final class ShelfPanelController {
         ) { [weak self] event in
             guard let self else { return event }
             if ActivationExecutor.shared.isActivating { return event }
-            if Self.isPelmetSynthetic(event) { return event }
             if event.window !== self.panelIfLoaded {
                 if let toggleWindow = self.anchorButton?.window, event.window === toggleWindow {
                     return event
@@ -221,12 +217,6 @@ final class ShelfPanelController {
                 self?.hide(animated: false)
             }),
         ]
-    }
-
-    /// Events posted by `SyntheticEventPoster` carry its source tag.
-    private static func isPelmetSynthetic(_ event: NSEvent) -> Bool {
-        event.cgEvent?.getIntegerValueField(.eventSourceUserData)
-            == SyntheticEventPoster.sourceUserData
     }
 
     private func removeDismissMonitors() {

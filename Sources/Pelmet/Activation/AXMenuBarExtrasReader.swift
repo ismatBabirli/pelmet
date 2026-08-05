@@ -3,7 +3,8 @@ import ApplicationServices
 import PelmetCore
 
 /// One menu bar extra as the Accessibility API reports it. Holds the live
-/// AXUIElement so activation can attempt AXPress without re-enumerating.
+/// AXUIElement so activation can perform an advertised pointer-safe action
+/// without re-enumerating.
 struct AXExtraObservation {
     let pid: pid_t
     let title: String?

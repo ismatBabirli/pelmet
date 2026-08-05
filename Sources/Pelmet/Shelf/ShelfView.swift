@@ -153,9 +153,9 @@ struct ShelfView: View {
     private func rowAccessibilityHint(_ row: ShelfRow) -> String {
         switch row.model.kind {
         case .engineItem:
-            return "Opens this menu bar item."
+            return "Opens this item when it supports a pointer-safe Accessibility action."
         case .app:
-            return "Brings the app forward. Enable one-click access to open the menu bar item directly."
+            return "Brings the app forward. Enable one-click access for compatible items."
         case .unknown:
             return "Shows what Pelmet can do about this hidden item."
         }
@@ -191,9 +191,9 @@ struct ShelfView: View {
     private func explanationText(for row: ShelfRow) -> String {
         switch row.model.kind {
         case .app(_, let name, _):
-            return "macOS won't let Pelmet open \(name)'s menu without the Accessibility permission. One-click access is opt-in and never reads your screen."
+            return "Pelmet can ask \(name)'s icon to open when it exposes a macOS Accessibility action. One-click access is opt-in, never moves your pointer, and never reads your screen."
         default:
-            return "Enable one-click access to identify these items and open them with a single click. It uses the Accessibility permission and never reads your screen."
+            return "Enable one-click access to identify these items and open compatible ones through macOS Accessibility. Pelmet never moves your pointer or reads your screen."
         }
     }
 

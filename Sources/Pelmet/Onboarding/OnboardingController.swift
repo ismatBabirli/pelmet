@@ -125,8 +125,8 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         guard show(
             title: "Open hidden icons with one click",
             message: "Turn on One-Click Access and Pelmet can open the icons the notch hides "
-                + "with a single click. It reads which app owns each icon and simulates a click. "
-                + "It never reads your screen, and you can turn it off any time in "
+                + "when they offer a macOS Accessibility action. It never creates mouse events, "
+                + "moves your pointer, or reads your screen, and you can turn it off any time in "
                 + "Settings → One-Click Access.",
             buttonTitle: autoPrompt ? "Got It" : "Enable One-Click Access…",
             on: button,

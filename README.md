@@ -4,7 +4,7 @@
 
 # Pelmet
 
-**Hide the menu bar icons you rarely need — bring them back with one click or ⌥⌘B.**
+**Hide the menu bar icons you rarely need — bring them back with ⌥⌘B or pointer-safe one-click access.**
 
 *A pelmet is the board above a window that hides the curtain fittings.
 This one hides your menu bar clutter, so nothing disappears behind the MacBook notch.*
@@ -23,7 +23,8 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 > [!NOTE]
 > **Status: shipping.** Hide/show works with zero special permissions, and the
 > notch-aware Shelf panel, opt-in one-click access, and opt-in show-on-hover
-> have shipped. Profiles are implemented for the upcoming 0.5.0 release.
+> have shipped. One-click access uses advertised macOS Accessibility actions
+> only and never creates mouse events or moves the pointer.
 
 ## Why
 
@@ -91,7 +92,6 @@ that you review and submit yourself.
 | See why icons are missing | Hover or right-click the toggle when it shows **+N** |
 | Lost the divider? | Right-click the toggle → Reset Divider Position |
 | Fit more icons beside the notch | Settings → Make Room… (incl. tighter icon spacing) |
-| Save or switch icon arrangements | Settings → Profiles, or right-click the chevron → Profiles |
 | Settings (hover, auto-rehide, launch at login) | Right-click the toggle → Settings… |
 | Quit | Right-click the toggle → Quit Pelmet |
 
@@ -163,9 +163,8 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 ## Roadmap
 
 - [x] **The Shelf** — a blurred, rounded panel below the notch listing the icons macOS hid, opened by clicking the count (or ⌥⌘N). Rows show each item's app icon and name — **never a screen capture**, so no Screen Recording permission and no purple recording dot.
-- [x] **One-click access** — an *opt-in* Accessibility toggle that opens hidden items with a single click (and identifies them on macOS 26 Tahoe). Off by default; everything else works without it.
+- [x] **Pointer-safe one-click access** — an *opt-in* Accessibility toggle that opens compatible hidden items using actions they advertise to macOS (and identifies them on macOS 26 Tahoe). It never posts mouse events or moves the pointer. Off by default; everything else works without it.
 - [x] Show on hover: reveal when the pointer touches the menu bar (opt-in)
-- [x] **Profiles**: save identifiable icon arrangements, switch them from Settings or the chevron menu, and optionally apply a default at launch (0.5.0)
 - [ ] Per-item rules and presentation mode (e.g. "always hide" or "hide sensitive items")
 - [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
 - [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`

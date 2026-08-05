@@ -105,21 +105,44 @@ public struct DirectorySnapshot: Equatable {
 /// Whether an activation was confirmed to have opened something.
 public enum ActivationVerification: Equatable {
     case menuOpened
-    /// The final click was posted but no new menu window was detected —
-    /// reported as soft success (many items open panels we can't classify).
+    /// The Accessibility action succeeded but no new menu window was detected.
+    /// Many status items open panels that cannot be classified as menus.
     case unverified
+}
+
+/// Pointer-free actions a status item may advertise through macOS
+/// Accessibility. Pelmet intentionally has no synthetic mouse fallback.
+public enum AccessibilityActivationAction: String, Equatable {
+    case showMenu = "AXShowMenu"
+    case press = "AXPress"
+}
+
+public enum AccessibilityActionSelector {
+    /// Prefer the action specifically intended to show an associated menu,
+    /// then the element's primary press action. Unknown actions are ignored.
+    public static func preferred(
+        from advertisedActions: [String]
+    ) -> AccessibilityActivationAction? {
+        let advertised = Set(advertisedActions)
+        if advertised.contains(AccessibilityActivationAction.showMenu.rawValue) {
+            return .showMenu
+        }
+        if advertised.contains(AccessibilityActivationAction.press.rawValue) {
+            return .press
+        }
+        return nil
+    }
 }
 
 public enum ActivationFailure: Equatable {
     case permissionDenied
     case itemVanished
-    /// The item sits in the notch dead zone and no strategy got through.
-    case blockedByNotch
-    /// No visible neighbor could be moved to make room.
-    case noRoomToExpose
+    /// The target exposes no macOS Accessibility action that can open it
+    /// without creating mouse events or moving the pointer.
+    case actionUnsupported
     /// Another activation is already in flight (or rate-limited).
     case busy
-    /// The user is mid-drag/mid-click; refusing to fight them.
+    /// The user is mid-drag/mid-click; wait instead of changing UI under them.
     case userInteracting
     /// Space change, screen lock, or session resign mid-flight.
     case interrupted

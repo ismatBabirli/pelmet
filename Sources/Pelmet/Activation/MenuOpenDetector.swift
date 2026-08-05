@@ -1,11 +1,10 @@
 import AppKit
 import PelmetCore
 
-/// Permission-free verification that a click opened something: watch for a
-/// new window at the menu/popover level near the click, appearing after we
-/// posted the click. Also detects that menu closing (gates the restore
-/// drag). Uses only CGWindowList bounds/level metadata — no Screen
-/// Recording, no titles.
+/// Permission-free verification that an Accessibility action opened something:
+/// watch for a new menu/popover-level window near the target. Also observes
+/// when that menu closes so auto-rehide can resume. Uses only CGWindowList
+/// bounds/level metadata — no Screen Recording, no titles.
 final class MenuOpenDetector {
 
     /// Window layers a menu or status popover lives at. Menus sit at/above
@@ -15,34 +14,28 @@ final class MenuOpenDetector {
     private static let horizontalTolerance: CGFloat = 250
     private static let topTolerance: CGFloat = 80
 
-    /// Window IDs present at the menu level before the click.
+    /// Window IDs present at the menu level before the Accessibility action.
     func baselineWindowIDs() -> Set<Int> {
         Set(menuWindows().map(\.id))
     }
 
-    /// A new menu-level window near `clickPoint` (AppKit coords) that wasn't
-    /// in `baseline` — i.e. our click opened a menu. Status-item menus drop
-    /// down from the bar, so the window's top edge sits just under it and
-    /// its horizontal span overlaps the clicked item.
-    func newMenuWindowID(near clickPoint: CGPoint, baseline: Set<Int>) -> Int? {
-        let screen = NSScreen.screens.first { $0.frame.contains(clickPoint) } ?? NSScreen.main
+    /// A new menu-level window near `targetPoint` (AppKit coords) that wasn't
+    /// in `baseline`. Status-item menus drop down from the bar, so the window's
+    /// top edge sits just under it and its horizontal span overlaps the item.
+    func newMenuWindowID(near targetPoint: CGPoint, baseline: Set<Int>) -> Int? {
+        let screen = NSScreen.screens.first { $0.frame.contains(targetPoint) } ?? NSScreen.main
         let primaryMaxY = NSScreen.screens.first?.frame.maxY ?? 0
         let menuBarBottom = (screen?.frame.maxY ?? primaryMaxY) - (screen?.safeAreaInsets.top ?? 24)
 
         for window in menuWindows() where !baseline.contains(window.id) {
             let appKit = ScreenCoordinates.appKitRect(fromCG: window.bounds, primaryMaxY: primaryMaxY)
-            let nearX = appKit.minX - Self.horizontalTolerance <= clickPoint.x
-                && clickPoint.x <= appKit.maxX + Self.horizontalTolerance
+            let nearX = appKit.minX - Self.horizontalTolerance <= targetPoint.x
+                && targetPoint.x <= appKit.maxX + Self.horizontalTolerance
             // A dropped menu's top edge is within a small band of the bar.
             let nearTop = abs(appKit.maxY - menuBarBottom) <= Self.topTolerance
             if nearX && nearTop { return window.id }
         }
         return nil
-    }
-
-    /// Whether a given window ID is still present (menu still open).
-    func isWindowPresent(_ id: Int) -> Bool {
-        menuWindows().contains { $0.id == id }
     }
 
     /// Any menu-level window beyond `baseline` — the user may be browsing a
