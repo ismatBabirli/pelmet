@@ -4,7 +4,7 @@
 
 # Pelmet
 
-**Hide the menu bar icons you rarely need — bring them back with ⌥⌘B or pointer-safe one-click access.**
+**Hide the menu bar icons you rarely need — bring them back with a shortcut you choose (⌥⌘B by default) or pointer-safe one-click access.**
 
 *A pelmet is the board above a window that hides the curtain fittings.
 This one hides your menu bar clutter, so nothing disappears behind the MacBook notch.*
@@ -90,6 +90,7 @@ that you review and submit yourself.
 | Action | How |
 |---|---|
 | Show/hide managed icons | Click the ‹ / › toggle, or press **⌥⌘B** |
+| Change either shortcut | Settings → General → **Shortcuts**: click one and type the new keys (⌫ removes it) |
 | Reveal managed icons on hover | Enable **Show hidden items on hover** in Settings, then move the pointer into the menu bar |
 | Keep an icon always visible | ⌘-drag it to the **right** of the ╱ divider |
 | See why icons are missing | Hover or right-click the toggle when it shows **+N** |
@@ -154,7 +155,7 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 - **I can't find the ╱ divider.** Right-click the chevron → Reset Divider
   Position brings it back next to the toggle.
 - **Is it even running?** `swift run` prints a banner once the app is up, and
-  pressing ⌥⌘B flips the chevron between ‹ and ›. No Dock icon or window is
+  pressing ⌥⌘B (the default toggle shortcut) flips the chevron between ‹ and ›. No Dock icon or window is
   normal — Pelmet is a menu-bar-only app.
 - **It quit when I closed the terminal.** Under `swift run` the app belongs to
   your terminal session; Ctrl-C (or closing the tab) quits it. Build the .app
@@ -165,11 +166,11 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 ## Roadmap
 
-- [x] **The Shelf** — a blurred, rounded panel below the notch listing the icons macOS hid, opened by clicking the count (or ⌥⌘N). Rows show each item's app icon and name — **never a screen capture**, so no Screen Recording permission and no purple recording dot.
+- [x] **The Shelf** — a blurred, rounded panel below the notch listing the icons macOS hid, opened by clicking the count (or ⌥⌘N by default). Rows show each item's app icon and name — **never a screen capture**, so no Screen Recording permission and no purple recording dot.
 - [x] **Pointer-safe one-click access** — an *opt-in* Accessibility toggle that opens compatible hidden items using actions they advertise to macOS (and identifies them on macOS 26 Tahoe). It never posts mouse events or moves the pointer. Off by default; everything else works without it.
 - [x] Show on hover: reveal when the pointer touches the menu bar (opt-in)
 - [ ] Per-item rules and presentation mode (e.g. "always hide" or "hide sensitive items")
-- [ ] Custom hotkey recorder (replace the hardcoded ⌥⌘B)
+- [x] **Custom shortcut recorder** — record your own combination for hide-and-show and for the Shelf, or clear either one. Pelmet refuses combinations macOS owns (including ones you remapped) and reports when another app already claimed one. Labels follow your keyboard layout.
 - [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`
 - [x] **Reliable Sparkle updates** — opt-in checks every 6 hours, bounded retry after temporary network failures, an **↑** menu-bar reminder, EdDSA-signed downloads, and explicit approval before Install and Relaunch
 

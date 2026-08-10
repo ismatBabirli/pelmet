@@ -24,6 +24,8 @@ enum Preferences {
         static let didAutoPromptAccessibility = "didAutoPromptAccessibility"
         static let awaitingOneClickGrant = "awaitingOneClickGrant"
         static let settingsPane = "settingsPane"
+        static let toggleShortcut = "toggleShortcut"
+        static let shelfShortcut = "shelfShortcut"
         static let telemetryEnabled = "telemetryEnabled"
         static let didShowTelemetryNotice = "didShowTelemetryNotice"
         static let telemetryNoticeShownAt = "telemetryNoticeShownAt"
@@ -41,6 +43,15 @@ enum Preferences {
         static let supportNudgeLastShownAt = "supportNudgeLastShownAt"
         static let supportNudgeShowCount = "supportNudgeShowCount"
         static let supportNudgeDismissed = "supportNudgeDismissed"
+
+        /// Which key holds an action's shortcut. Two keys rather than one blob, so
+        /// a corrupt value costs one shortcut instead of both.
+        static func shortcut(for action: HotkeyAction) -> String {
+            switch action {
+            case .toggle: return toggleShortcut
+            case .shelf: return shelfShortcut
+            }
+        }
     }
 
     /// Last collapse state, restored at launch. Defaults to expanded so a
@@ -74,7 +85,7 @@ enum Preferences {
 
     /// Clicking the chevron while it shows "+N" opens the Shelf (the panel
     /// listing icons the notch hid) instead of collapsing. The right-click
-    /// menu and ⌥⌘N open the Shelf regardless of this setting.
+    /// menu and the Shelf shortcut open the Shelf regardless of this setting.
     static var shelfEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.shelfEnabled) as? Bool ?? true
     }
@@ -93,6 +104,39 @@ enum Preferences {
     static var settingsPane: String {
         get { UserDefaults.standard.string(forKey: Keys.settingsPane) ?? "" }
         set { UserDefaults.standard.set(newValue, forKey: Keys.settingsPane) }
+    }
+
+    // MARK: - Keyboard shortcuts
+
+    /// Per-action shortcut overrides. An ABSENT key means the shipped default
+    /// (⌥⌘B / ⌥⌘N), so existing installs need no migration and a future change of
+    /// default still reaches anyone who never customized. A stored record with no
+    /// keyCode means "cleared on purpose", which is a different fact. A value that
+    /// will not decode is left in place for diagnosis and treated as absent.
+    /// Written only via `HotkeyManager.setShortcut`, never from a view.
+    static func hotkeyRecord(for action: HotkeyAction) -> HotkeyRecord? {
+        guard let data = UserDefaults.standard.data(forKey: Keys.shortcut(for: action)) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(HotkeyRecord.self, from: data)
+    }
+
+    static func setHotkeyRecord(_ record: HotkeyRecord?, for action: HotkeyAction) {
+        let key = Keys.shortcut(for: action)
+        guard let record, let data = try? JSONEncoder().encode(record) else {
+            // Removing restores the shipped default, which is what
+            // "Restore Defaults" wants.
+            UserDefaults.standard.removeObject(forKey: key)
+            return
+        }
+        UserDefaults.standard.set(data, forKey: key)
+    }
+
+    static var hotkeyBindings: HotkeyBindings {
+        HotkeyBindingResolver.resolve(
+            toggle: hotkeyRecord(for: .toggle),
+            shelf: hotkeyRecord(for: .shelf)
+        )
     }
 
     // MARK: - Software update recovery

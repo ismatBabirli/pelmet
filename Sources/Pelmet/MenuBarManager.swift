@@ -125,6 +125,16 @@ final class MenuBarManager: NSObject {
             self?.preferencesDidChange()
         }
 
+        // The chevron tooltip quotes the toggle shortcut, so a recorded change (or
+        // a keyboard layout switch) has to refresh it. The right-click menu is
+        // rebuilt on every click, so it needs nothing.
+        NotificationCenter.default.addObserver(
+            forName: .pelmetHotkeyBindingsDidChange,
+            object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.updateToggleIcon()
+        }
+
         // Restore the last collapse state. First launch starts EXPANDED and
         // STAYS expanded — nothing hides until the user acts. Auto-rehide
         // follows a user-initiated reveal, NOT this launch restore.
@@ -483,7 +493,8 @@ final class MenuBarManager: NSObject {
     ///   expanded, +N showing, shelf enabled     → open the Shelf
     ///   expanded, +N showing, shelf disabled    → collapse (pre-Shelf behavior)
     ///
-    /// ⌥⌘B always means plain toggle; right-click always means the menu.
+    /// The toggle shortcut always means plain toggle; right-click always means
+    /// the menu.
     @objc private func toggleButtonClicked(_ sender: NSStatusBarButton) {
         if NSApp.currentEvent?.type == .rightMouseUp {
             showContextMenu()
@@ -559,8 +570,9 @@ final class MenuBarManager: NSObject {
 
         var tooltip: String
         var accessibilityValue: String
+        let toggleHint = HotkeyDisplay.parenthetical(for: HotkeyManager.shared.bindings.toggle)
         if isCollapsed {
-            tooltip = "Pelmet: show hidden icons (⌥⌘B)"
+            tooltip = "Pelmet: show hidden icons\(toggleHint)"
             accessibilityValue = "Icons hidden"
         } else if separatorSwallowed {
             tooltip = "The menu bar is full. Pelmet's divider is hidden by the notch. Right-click for options."
@@ -576,7 +588,7 @@ final class MenuBarManager: NSObject {
                 accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch."
             }
         } else {
-            tooltip = "Pelmet: hide icons (⌥⌘B)"
+            tooltip = "Pelmet: hide icons\(toggleHint)"
             accessibilityValue = "Icons shown"
         }
         if let updateNotice = updatePresentation.tooltipNotice {
@@ -637,12 +649,15 @@ final class MenuBarManager: NSObject {
             if swallowedCount > 0 {
                 // Always offered while something is hidden — the menu is the
                 // path that works even with the click-to-open pref off.
+                let shelfShortcut = HotkeyDisplay.menuKeyEquivalent(
+                    for: HotkeyManager.shared.bindings.shelf
+                )
                 let shelfEntry = NSMenuItem(
                     title: "See What's Hidden…",
                     action: #selector(openShelfFromMenu),
-                    keyEquivalent: "n"
+                    keyEquivalent: shelfShortcut.key
                 )
-                shelfEntry.keyEquivalentModifierMask = [.command, .option]
+                shelfEntry.keyEquivalentModifierMask = shelfShortcut.mask
                 shelfEntry.target = self
                 menu.addItem(shelfEntry)
             }
@@ -659,8 +674,15 @@ final class MenuBarManager: NSObject {
         }
 
         let toggleTitle = isCollapsed ? "Show Hidden Icons" : "Hide Icons"
-        let toggleEntry = NSMenuItem(title: toggleTitle, action: #selector(menuToggle), keyEquivalent: "b")
-        toggleEntry.keyEquivalentModifierMask = [.command, .option]
+        let toggleShortcut = HotkeyDisplay.menuKeyEquivalent(
+            for: HotkeyManager.shared.bindings.toggle
+        )
+        let toggleEntry = NSMenuItem(
+            title: toggleTitle,
+            action: #selector(menuToggle),
+            keyEquivalent: toggleShortcut.key
+        )
+        toggleEntry.keyEquivalentModifierMask = toggleShortcut.mask
         toggleEntry.target = self
         menu.addItem(toggleEntry)
 

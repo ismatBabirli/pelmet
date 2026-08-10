@@ -8,6 +8,10 @@ import SwiftUI
 struct GeneralPaneView: View {
 
     @ObservedObject private var updater = UpdaterController.shared
+    @ObservedObject private var hotkeys = HotkeyStatus.shared
+    /// Why the last recording attempt was refused, per action. Cleared as soon as
+    /// a combination is accepted or removed.
+    @State private var rejections: [HotkeyAction: String] = [:]
     @AppStorage(Preferences.Keys.autoRehide) private var autoRehide = true
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
     @AppStorage(Preferences.Keys.showOnHover) private var showOnHover = false
@@ -59,9 +63,55 @@ struct GeneralPaneView: View {
                 }
             }
 
-            Section("Shortcuts") {
-                LabeledContent("Toggle shortcut", value: "⌥⌘B")
-                LabeledContent("Shelf shortcut", value: "⌥⌘N")
+            Section {
+                ForEach(HotkeyAction.allCases, id: \.self) { action in
+                    VStack(alignment: .leading, spacing: 4) {
+                        LabeledContent(action.title) {
+                            HStack(spacing: 6) {
+                                ShortcutRecorder(
+                                    action: action,
+                                    combo: hotkeys.bindings[action],
+                                    onRecord: { record($0, for: action) },
+                                    onClear: { clear(action) }
+                                )
+                                .frame(width: 132, height: 22)
+
+                                if hotkeys.bindings[action] != nil {
+                                    Button {
+                                        clear(action)
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .help("Remove this shortcut")
+                                    .accessibilityLabel("Remove the \(action.title) shortcut")
+                                }
+                            }
+                        }
+
+                        if let note = note(for: action) {
+                            Text(note)
+                                .font(.caption)
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                }
+
+                Button("Restore Default Shortcuts") {
+                    HotkeyManager.shared.restoreDefaults()
+                    rejections = [:]
+                }
+                .disabled(hotkeys.isDefault)
+            } header: {
+                Text("Shortcuts")
+            } footer: {
+                Text("Click a shortcut, then press the new keys. A shortcut on a letter or "
+                    + "number needs at least two modifiers, like ⌥⌘B, because a single one "
+                    + "would override that combination in every app. Esc cancels, ⌫ removes.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             // Sparkle owns the "check automatically" preference (its own
@@ -146,6 +196,30 @@ struct GeneralPaneView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Routed through the manager, which validates and persists. The pref key is
+    /// never written from here.
+    private func record(_ combo: KeyCombo, for action: HotkeyAction) -> HotkeyRejection? {
+        let rejection = HotkeyManager.shared.setShortcut(combo, for: action)
+        rejections[action] = rejection?.message(
+            for: combo, keyName: HotkeyDisplay.keyName(for: combo)
+        )
+        return rejection
+    }
+
+    private func clear(_ action: HotkeyAction) {
+        HotkeyManager.shared.setShortcut(nil, for: action)
+        rejections[action] = nil
+    }
+
+    /// A live rejection wins over a registration failure: the user just acted, so
+    /// tell them about that before anything older.
+    private func note(for action: HotkeyAction) -> String? {
+        if let rejection = rejections[action] { return rejection }
+        guard hotkeys.outcomes[action] == .unavailable else { return nil }
+        let shortcut = hotkeys.bindings[action].map(HotkeyDisplay.string(for:)) ?? "That shortcut"
+        return "Another app is already using \(shortcut). Pick a different combination."
     }
 
     private func updateLaunchAtLogin(_ enabled: Bool) {

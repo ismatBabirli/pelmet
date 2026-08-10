@@ -35,10 +35,14 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         if !Preferences.didShowToggleTip {
             guard toggleVisible, let button = toggle.button else { return }
             let delay = Int(Preferences.rehideDelay)
+            // Quote whatever the toggle shortcut actually is, and say nothing when
+            // the user has cleared it.
+            let toggleHint = HotkeyManager.shared.bindings.toggle
+                .map { " (or press \(HotkeyDisplay.string(for: $0)))" } ?? ""
             if show(
                 title: "Welcome to Pelmet",
                 message: "This ‹/› chevron hides everything to the left of the ╱ divider. "
-                    + "Click it (or press ⌥⌘B) to clear the clutter, click again to bring it back. "
+                    + "Click it\(toggleHint) to clear the clutter, click again to bring it back. "
                     + "⌘-drag the icons you always want visible to the divider's right, next to the "
                     + "clock. Revealed icons re-hide after \(delay) seconds; change that in Settings.",
                 buttonTitle: "Got It",
@@ -97,10 +101,12 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
               Preferences.shelfEnabled,
               count > 0,
               let button = toggle.button else { return }
+        let shelfHint = HotkeyManager.shared.bindings.shelf
+            .map { " \(HotkeyDisplay.string(for: $0)) works too." } ?? ""
         guard show(
             title: "See what's hidden",
             message: "New: when the chevron shows +\(count), click it to open the Shelf, "
-                + "a panel listing the icons the notch hid. ⌥⌘N works too.",
+                + "a panel listing the icons the notch hid.\(shelfHint)",
             buttonTitle: "Got It",
             on: button
         ) else { return }

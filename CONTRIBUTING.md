@@ -50,7 +50,11 @@ geometry lives in `Sources/PelmetCore/`.
 | `MenuBarSpacing.swift` | NSStatusItemSpacing/SelectionPadding profiles (per-host defaults) |
 | `LayoutStatus.swift` | Bridges live layout facts into SwiftUI |
 | `UIActivityTracker.swift` | Pauses auto-rehide while Pelmet UI is open |
-| `HotkeyManager.swift` | Carbon global hotkey (⌥⌘B), permission-free |
+| `Hotkeys/HotkeyManager.swift` | Carbon global hotkeys (⌥⌘B and ⌥⌘N by default), permission-free, user-recordable |
+| `Hotkeys/HotkeyStatus.swift` | Bridges live bindings and registration outcomes into SwiftUI |
+| `Hotkeys/ShortcutRecorderButton.swift` | The `NSButton` that records a combination, plus its SwiftUI wrapper |
+| `Hotkeys/KeyboardLayoutNames.swift` | `UCKeyTranslate` labels for the live keyboard layout |
+| `Hotkeys/SystemReservedShortcuts.swift` | Reads macOS's own symbolic hotkeys so they can be refused |
 | `Preferences.swift` | UserDefaults keys shared between AppKit and SwiftUI |
 | `Settings/SettingsRootView.swift` | System Settings-style sidebar + detail layout |
 | `Settings/SettingsPane.swift` | Pane descriptors: titles, icons, notch-gated availability |
@@ -62,6 +66,7 @@ geometry lives in `Sources/PelmetCore/`.
 | `../PelmetCore/MenuBarLayoutClassifier.swift` | Pure geometry: which icons is macOS hiding at the notch |
 | `../PelmetCore/ShelfContent.swift`, `ShelfPlacement.swift`, `TipPlacement.swift`, `ScreenCoordinates.swift` | Pure Shelf/tip content derivation and placement geometry |
 | `../PelmetCore/Activation/` | Pure activation action selection, status-item correlation, and quiescence policy |
+| `../PelmetCore/Hotkeys/` | Pure shortcut model: keycode names, validation rules, persisted record and its resolver |
 
 Three ground rules:
 
@@ -116,13 +121,16 @@ The AppKit plumbing is still verified manually. Before sending a PR, please
 run the smoke test:
 
 1. `swift run`
-2. Toggle with a click on ‹ / › and with ⌥⌘B
+2. Toggle with a click on ‹ / › and with the toggle shortcut (⌥⌘B by default)
 3. Open Settings (right-click the toggle), flip the options, relaunch, and
    confirm they persisted
 4. On a notched MacBook with a crowded bar: confirm the +N count appears when
    expanded icons don't fit, and that right-click → Reset Divider Position
    brings the ╱ divider back next to the chevron
-5. If you touched the Shelf or the activation engine, run through
+5. If you touched the shortcuts, run the "Shortcuts" section of
+   [docs/shelf-verification.md](docs/shelf-verification.md). Carbon needs no
+   permission, so all of it except the persistence steps works under `swift run`.
+6. If you touched the Shelf or the activation engine, run through
    [docs/shelf-verification.md](docs/shelf-verification.md). The opt-in
    Accessibility path (one-click activation) must be tested with a **bundled
    `.app`** — TCC keys the permission to the code signature, so `swift run`

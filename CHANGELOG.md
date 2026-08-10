@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Custom shortcuts.** Record your own combination for hide-and-show and for the
+  Shelf in Settings → General → Shortcuts, or clear either one entirely. Still
+  Carbon `RegisterEventHotKey`, so still no Accessibility permission. Pelmet checks
+  a combination before accepting it and names what is in the way: macOS itself
+  (including shortcuts you have remapped), Pelmet's other action, or another app
+  that already claimed it. Shortcut labels follow your keyboard layout, so a Dvorak
+  user sees the key they actually pressed. Existing installs keep ⌥⌘B and ⌥⌘N with
+  nothing to do.
+
 ## [0.6.1] - 2026-08-05
 
 ### Changed

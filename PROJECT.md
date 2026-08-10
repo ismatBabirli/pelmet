@@ -46,7 +46,7 @@ Pelmet occupies a deliberate position in that landscape:
 
 *Goal: a working, trustworthy hide/show tool anyone can build and run.*
 
-- Hide/show via expanding divider, toggle button, and global hotkey (⌥⌘B)
+- Hide/show via expanding divider, toggle button, and global hotkey (⌥⌘B by default, recordable)
 - Auto-rehide after a configurable delay
 - SwiftUI settings window; launch at login (SMAppService)
 - Runs via `swift run`, XcodeGen, or manual Xcode project
@@ -59,7 +59,7 @@ Pelmet occupies a deliberate position in that landscape:
 - **Fluid animations** for expand/collapse (the "Vanilla moment" — icons glide, not blink)
 - ✅ **Show on hover:** opt-in reveal when the pointer touches the menu bar
 - **Show on scroll:** reveal hidden items when the user scrolls on the menu bar
-- **Custom hotkey recorder** (replace hardcoded ⌥⌘B)
+- ✅ **Custom hotkey recorder:** both shortcuts recordable and clearable in Settings, validated against macOS's own symbolic hotkeys, labels follow the live keyboard layout
 - ✅ **Onboarding:** first-launch walkthrough teaching the ⌘-drag gesture (shipped in 0.1.0)
 - ✅ **App icon & identity:** pelmet/curtain metaphor, warm and crafted (shipped in 0.1.0)
 - ✅ **Distribution pipeline:** GitHub Actions → build, codesign, notarize → GitHub Releases + Homebrew cask (`brew install --cask pelmet`) — shipped in 0.1.0; Sparkle auto-updates shipped in 0.2.0
@@ -70,7 +70,7 @@ Pelmet occupies a deliberate position in that landscape:
 *Goal: the beautiful, actionable answer to the notch.*
 
 A **floating frosted panel** below the notch listing exactly the icons macOS
-hid, opened by clicking the "+N" count (or ⌥⌘N). Two tiers, degrading
+hid, opened by clicking the "+N" count (or ⌥⌘N by default). Two tiers, degrading
 gracefully:
 
 - **Tier 0 — permission-free.** Rows render as the owning app's icon + name
@@ -146,7 +146,7 @@ gracefully:
 | Shelf rendering | App icon + name from `NSRunningApplication` (no screen capture) |
 | Item identity | `CGWindowListCopyWindowInfo` owner PID (≤ Sequoia); `kAXExtrasMenuBarAttribute` sweep (Tahoe, opt-in Accessibility) |
 | One-click access | Advertised `AXShowMenu` or `AXPress` actions only (opt-in Accessibility; no synthetic input) |
-| Hotkeys | Carbon `RegisterEventHotKey` (permission-free) |
+| Hotkeys | Carbon `RegisterEventHotKey` (permission-free); user-recordable, registered dynamically |
 | Updates | Sparkle 2 |
 | CI/CD | GitHub Actions: build → sign → notarize → release |
 | License | MIT |
