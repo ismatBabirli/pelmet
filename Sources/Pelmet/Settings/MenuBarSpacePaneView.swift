@@ -8,6 +8,12 @@ struct MenuBarSpacePaneView: View {
     @AppStorage(Preferences.Keys.showSwallowedCount) private var showSwallowedCount = true
     @AppStorage(Preferences.Keys.shelfEnabled) private var shelfEnabled = true
     @ObservedObject private var status = LayoutStatus.shared
+    @ObservedObject private var hotkeys = HotkeyStatus.shared
+
+    /// " (or ⌥⌘N)", or nothing when the user cleared the Shelf shortcut.
+    private var shelfShortcutHint: String {
+        hotkeys.bindings.shelf.map { " (or \(HotkeyDisplay.string(for: $0)))" } ?? ""
+    }
 
     var body: some View {
         Form {
@@ -25,7 +31,7 @@ struct MenuBarSpacePaneView: View {
                 } footer: {
                     Text("The Shelf is a panel under the notch listing the icons macOS hid. "
                         + "Turned off, a click always hides/shows icons instead; the Shelf stays "
-                        + "one right-click (or ⌥⌘N) away.")
+                        + "one right-click\(shelfShortcutHint) away.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

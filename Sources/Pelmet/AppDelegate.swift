@@ -50,16 +50,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // first-run notice is shown, and stays inert under `swift run`/DEBUG.
         TelemetryManager.shared.start()
 
-        // Global hotkeys: ⌥⌘B toggles hidden items, ⌥⌘N opens the Shelf.
+        // Global hotkeys, ⌥⌘B and ⌥⌘N by default, recordable in Settings.
         HotkeyManager.shared.onToggle = {
             MenuBarManager.shared.toggle()
         }
         HotkeyManager.shared.onShelf = {
             MenuBarManager.shared.openShelfFromHotkey()
         }
-        let registration = HotkeyManager.shared.register()
+        HotkeyManager.shared.start()
 
-        printStartupBanner(hotkeys: registration)
+        printStartupBanner()
 
         // Let applicationDidFinishLaunching return before taking focus. The
         // controller waits if Sparkle happens to own a modal at this point.
@@ -76,6 +76,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// a crash. SIGINT/SIGTERM are handled separately in CrashReportMonitor.
     func applicationWillTerminate(_ notification: Notification) {
         MenuBarManager.shared.tearDown()
+        // This layer is started here, so it is torn down here too.
+        HotkeyManager.shared.unregister()
         CrashReportMonitor.shared.markCleanExit()
     }
 
@@ -109,14 +111,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// invisible menu-bar app is alive. A bundled .app has no visible stdout,
     /// and os.Logger goes to the unified log, not the terminal, so print is
     /// the right channel for this audience.
-    private func printStartupBanner(hotkeys: HotkeyManager.Registration) {
+    private func printStartupBanner() {
+        let bindings = HotkeyManager.shared.bindings
+        let outcomes = HotkeyManager.shared.outcomes
+        let toggleGlyph = bindings.toggle.map(HotkeyDisplay.string(for:))
+        let shelfHint = outcomes[.shelf] == .registered
+            ? bindings.shelf.map { " (or press \(HotkeyDisplay.string(for: $0)))" } ?? ""
+            : ""
+
+        let toggleLine: String
+        switch (outcomes[.toggle], toggleGlyph) {
+        case let (.registered, glyph?):
+            toggleLine = "  • Click the chevron or press \(glyph) to hide/show icons."
+        case let (.unavailable, glyph?):
+            toggleLine = "  • Click the chevron to hide/show icons. "
+                + "(\(glyph) is unavailable; another app claimed it.)"
+        default:
+            toggleLine = "  • Click the chevron to hide/show icons."
+        }
+
         var lines = [
             "Pelmet is running as a menu-bar-only app (no Dock icon, no window).",
             "  Look for the ‹/› chevron toggle next to the clock; the ╱ divider",
             "  sits just left of the chevron.",
-            hotkeys.toggle
-                ? "  • Click the chevron or press ⌥⌘B to hide/show icons."
-                : "  • Click the chevron to hide/show icons. (⌥⌘B is unavailable; another app claimed it.)",
+            toggleLine,
             "  • Pelmet hides everything LEFT of ╱. ⌘-drag icons you always",
             "    want visible to its RIGHT, next to the clock.",
         ]
@@ -129,7 +147,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         lines.append(contentsOf: [
             "  • A number next to the chevron (like +3) means that many icons don't fit",
             "    beside the notch. Click the chevron to see them on the Shelf"
-                + (hotkeys.shelf ? " (or press ⌥⌘N)." : "."),
+                + shelfHint + ".",
+            "  • Change either shortcut in Settings → General → Shortcuts.",
             "  • Can't find Pelmet in the bar? Launching it again opens its Settings window.",
             "  • Ctrl-C here (or closing this terminal) quits Pelmet.",
         ])
