@@ -43,6 +43,7 @@ enum Preferences {
         static let supportNudgeLastShownAt = "supportNudgeLastShownAt"
         static let supportNudgeShowCount = "supportNudgeShowCount"
         static let supportNudgeDismissed = "supportNudgeDismissed"
+        static let softwareIslandRules = "softwareIslandRules"
 
         /// Which key holds an action's shortcut. Two keys rather than one blob, so
         /// a corrupt value costs one shortcut instead of both.
@@ -88,6 +89,37 @@ enum Preferences {
     /// menu and the Shelf shortcut open the Shelf regardless of this setting.
     static var shelfEnabled: Bool {
         UserDefaults.standard.object(forKey: Keys.shelfEnabled) as? Bool ?? true
+    }
+
+    struct SoftwareIslandRule: Codable, Equatable {
+        var enabled: Bool?
+        var restingWidth: Double?
+    }
+
+    static var softwareIslandRules: [String: SoftwareIslandRule] {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: Keys.softwareIslandRules) else {
+                return [:]
+            }
+            return (try? JSONDecoder().decode([String: SoftwareIslandRule].self, from: data)) ?? [:]
+        }
+        set {
+            guard let data = try? JSONEncoder().encode(newValue) else { return }
+            UserDefaults.standard.set(data, forKey: Keys.softwareIslandRules)
+        }
+    }
+
+    static func updateSoftwareIslandRule(
+        bundleIdentifier: String,
+        enabled: Bool? = nil,
+        restingWidth: CGFloat? = nil
+    ) {
+        var rules = softwareIslandRules
+        var rule = rules[bundleIdentifier] ?? SoftwareIslandRule()
+        if let enabled { rule.enabled = enabled }
+        if let restingWidth { rule.restingWidth = Double(restingWidth) }
+        rules[bundleIdentifier] = rule
+        softwareIslandRules = rules
     }
 
     /// Opt-in for the Accessibility-gated activation engine (one-click

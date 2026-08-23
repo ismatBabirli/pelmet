@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The remedies hub: everything a user can actually do about a menu bar
-/// that doesn't fit beside the notch. Non-modal, reachable from the
+/// that doesn't fit around an obstruction. Non-modal, reachable from the
 /// right-click menu, the count education popover's advice, and Settings.
 final class MakeRoomWindowController: NSWindowController, NSWindowDelegate {
 
@@ -47,8 +47,8 @@ struct MakeRoomView: View {
             if status.swallowedCount > 0 {
                 Label(
                     status.swallowedCount == 1
-                        ? "1 icon doesn't fit beside the notch right now."
-                        : "\(status.swallowedCount) icons don't fit beside the notch right now.",
+                        ? "1 icon is covered in the menu bar right now."
+                        : "\(status.swallowedCount) icons are covered in the menu bar right now.",
                     systemImage: "info.circle"
                 )
                 .font(.callout)
@@ -66,7 +66,7 @@ struct MakeRoomView: View {
                 symbol: "arrow.left.and.right",
                 title: "Tighten icon spacing",
                 text: "macOS spaces menu bar icons generously. Reducing the spacing fits more icons "
-                    + "beside the notch. No permissions involved; the change takes effect the next "
+                    + "around the notch or software island. No permissions involved; the change takes effect the next "
                     + "time you log in."
             ) {
                 VStack(alignment: .leading, spacing: 6) {

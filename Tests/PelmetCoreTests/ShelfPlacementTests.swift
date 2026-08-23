@@ -50,6 +50,18 @@ struct ShelfPlacementTests {
         #expect(frame.midX == 756)
     }
 
+    @Test func testNoAnchorPrefersSoftwareIslandCenter() {
+        let island = CGRect(x: 800, y: 950, width: 200, height: 32)
+        let geometry = MenuBarGeometry(
+            screenFrame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            notchRect: nil,
+            menuBarHeight: 32,
+            softwareOverlayRect: island
+        )
+        let frame = ShelfPlacement.panelFrame(panelSize: panelSize, anchorFrame: nil, geometry: geometry)
+        #expect(frame.midX == island.midX)
+    }
+
     @Test func testSecondaryDisplayOriginIsRespected() {
         // A display left of the primary: negative-x screen frame.
         let external = MenuBarGeometry(

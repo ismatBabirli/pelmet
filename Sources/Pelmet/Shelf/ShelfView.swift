@@ -1,7 +1,7 @@
 import SwiftUI
 import PelmetCore
 
-/// The Shelf's content: a frosted card listing the icons the notch hid.
+/// The Shelf's content: a frosted card listing covered icons.
 /// Rows are real buttons (VoiceOver reads them for free); keyboard events
 /// arrive from the panel via the view model, not SwiftUI focus.
 struct ShelfView: View {
@@ -53,7 +53,7 @@ struct ShelfView: View {
                 .strokeBorder(Color.primary.opacity(0.12), lineWidth: 0.5)
         )
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Pelmet Shelf: icons hidden by the notch")
+        .accessibilityLabel("Pelmet Shelf: unavailable menu bar icons")
     }
 
     // MARK: - Sections
@@ -68,9 +68,9 @@ struct ShelfView: View {
     private var headerText: String {
         switch model.tier {
         case .owners, .engine:
-            return "Hidden by the notch"
+            return "Unavailable in the menu bar"
         case .anonymous:
-            return "Hidden by the notch. macOS 26 hides which apps these belong to"
+            return "Unavailable in the menu bar. macOS 26 hides which apps these belong to"
         }
     }
 
@@ -79,7 +79,7 @@ struct ShelfView: View {
             Image(systemName: "checkmark.circle")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text("Everything fits. Nothing is hidden by the notch.")
+            Text("Everything fits. No icons are unavailable.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)

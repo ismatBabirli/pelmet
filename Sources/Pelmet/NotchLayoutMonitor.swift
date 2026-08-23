@@ -2,7 +2,7 @@ import AppKit
 import PelmetCore
 
 /// Watches menu bar layout and reports, with zero permissions, how many
-/// icons macOS is silently hiding at the notch — plus whether Pelmet's own
+/// icons are hidden by a physical notch or software island, plus whether Pelmet's own
 /// divider and toggle are visible.
 ///
 /// Event-driven only (no polling): measurements run after expand/collapse
@@ -63,10 +63,12 @@ final class NotchLayoutMonitor {
     private var candidate: MeasurementDigest?
     private var confirmedMeasurement: MeasurementDigest?
     private var deferredRetries = 0
+    private var hasPendingSoftwareIslandConfiguration = false
     private var observers: [NSObjectProtocol] = []
 
-    enum MeasurementReason {
-        case launch, expandSettled, collapseSettled, screenChanged, workspaceChanged, menuOpened, itemRecreated
+    enum MeasurementReason: Equatable {
+        case launch, expandSettled, collapseSettled, screenChanged, workspaceChanged
+        case menuOpened, itemRecreated, softwareIslandConfigurationChanged
 
         var settleDelay: TimeInterval {
             switch self {
@@ -75,6 +77,7 @@ final class NotchLayoutMonitor {
             case .screenChanged: return 1.0
             case .workspaceChanged: return 1.0
             case .menuOpened: return 0
+            case .softwareIslandConfigurationChanged: return 0.03
             case .itemRecreated: return 0.5
             }
         }
@@ -93,9 +96,17 @@ final class NotchLayoutMonitor {
         }
         observers = [
             observe(.default, NSApplication.didChangeScreenParametersNotification, .screenChanged),
+            observe(
+                .default,
+                .pelmetSoftwareIslandConfigurationDidChange,
+                .softwareIslandConfigurationChanged
+            ),
             observe(NSWorkspace.shared.notificationCenter, NSWorkspace.activeSpaceDidChangeNotification, .workspaceChanged),
             observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didWakeNotification, .workspaceChanged),
+            observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didLaunchApplicationNotification, .workspaceChanged),
             observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didTerminateApplicationNotification, .workspaceChanged),
+            observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didHideApplicationNotification, .workspaceChanged),
+            observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didUnhideApplicationNotification, .workspaceChanged),
         ]
     }
 
@@ -110,22 +121,35 @@ final class NotchLayoutMonitor {
     // MARK: - Measurement
 
     func requestMeasurement(reason: MeasurementReason) {
+        if case .softwareIslandConfigurationChanged = reason {
+            // Slider and toggle changes are deterministic user input. They do
+            // not need the two-snapshot guard used for Window Server churn.
+            hasPendingSoftwareIslandConfiguration = true
+        }
         // Coalesce: the soonest requested measurement wins.
         let delay = reason.settleDelay
         if let pending = pendingMeasurement, pending.isValid,
            pending.fireDate.timeIntervalSinceNow < delay { return }
         pendingMeasurement?.invalidate()
         deferredRetries = 0
-        pendingMeasurement = Timer.scheduledTimer(withTimeInterval: max(delay, 0.01), repeats: false) { [weak self] _ in
+        let timer = Timer(timeInterval: max(delay, 0.01), repeats: false) { [weak self] _ in
             self?.measureNow()
         }
+        pendingMeasurement = timer
+        RunLoop.main.add(
+            timer,
+            forMode: reason == .softwareIslandConfigurationChanged ? .common : .default
+        )
     }
 
     private func measureNow() {
         pendingMeasurement = nil
+        let confirmsImmediately = hasPendingSoftwareIslandConfiguration
+        hasPendingSoftwareIslandConfiguration = false
 
         // Mid-drag (⌘-drag of a status item) layouts are transient garbage.
-        if NSEvent.pressedMouseButtons != 0, deferredRetries < 6 {
+        // A Settings slider drag is safe and must update while the mouse is down.
+        if !confirmsImmediately, NSEvent.pressedMouseButtons != 0, deferredRetries < 6 {
             deferredRetries += 1
             pendingMeasurement = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
                 self?.measureNow()
@@ -146,16 +170,19 @@ final class NotchLayoutMonitor {
             geometry: geometry
         )
 
-        publish(classification)
+        publish(classification, confirmsImmediately: confirmsImmediately)
     }
 
-    private func publish(_ classification: LayoutClassification) {
+    private func publish(
+        _ classification: LayoutClassification,
+        confirmsImmediately: Bool = false
+    ) {
         let digest = MeasurementDigest(classification: classification)
         if digest == confirmedMeasurement {
             candidate = nil
             return
         }
-        if digest == candidate {
+        if confirmsImmediately || digest == candidate {
             candidate = nil
             confirmedMeasurement = digest
             confirmed = classification
@@ -187,10 +214,20 @@ final class NotchLayoutMonitor {
     }
 
     func currentGeometry() -> MenuBarGeometry? {
-        // Warn only about the notched (built-in) display; on every other
-        // display the full bar fits and there is nothing to say. Fall back
-        // to the toggle's screen so collapse bookkeeping still works.
-        let screen = NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
+        let softwareIslands = SoftwareIslandMonitor.shared
+        softwareIslands.refresh()
+
+        // Prefer a display with an enabled software island, then preserve the
+        // existing physical-notch behavior. The toggle screen remains the
+        // fallback for ordinary displays and collapse bookkeeping.
+        let toggleScreenFrame = toggleItem?.button?.window?.screen?.frame
+        let softwareIslandScreen = softwareIslands
+            .preferredScreenFrame(preferred: toggleScreenFrame)
+            .flatMap { frame in
+            NSScreen.screens.first { $0.frame == frame }
+        }
+        let screen = softwareIslandScreen
+            ?? NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
             ?? toggleItem?.button?.window?.screen
             ?? NSScreen.main
         guard let screen else { return nil }
@@ -209,11 +246,16 @@ final class NotchLayoutMonitor {
 
         let menuBarHeight = toggleItem?.button?.window?.frame.height
             ?? max(NSStatusBar.system.thickness, screen.safeAreaInsets.top)
+        let softwareOverlayRect = softwareIslands.obstruction(
+            on: screen,
+            menuBarHeight: menuBarHeight
+        )
 
         return MenuBarGeometry(
             screenFrame: screen.frame,
             notchRect: notchRect,
-            menuBarHeight: menuBarHeight
+            menuBarHeight: menuBarHeight,
+            softwareOverlayRect: softwareOverlayRect
         )
     }
 }

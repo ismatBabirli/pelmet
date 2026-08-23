@@ -25,7 +25,7 @@ This one hides your menu bar clutter, so nothing disappears behind the MacBook n
 
 > [!NOTE]
 > **Status: shipping.** Hide/show works with zero special permissions, and the
-> notch-aware Shelf panel, opt-in one-click access, and opt-in show-on-hover
+> notch-aware Shelf panel, software-island support, opt-in one-click access, and opt-in show-on-hover
 > have shipped. One-click access uses advertised macOS Accessibility actions
 > only and never creates mouse events or moves the pointer.
 
@@ -35,9 +35,15 @@ On notched MacBooks, macOS silently hides menu bar items that don't fit next to
 the camera housing — no overflow indicator, the icons are just *gone*. Pelmet
 gives you back control: park rarely-used icons behind a divider and summon them
 when you need them. And when icons *still* don't fit, Pelmet is the only tool
-that tells you — a small **+3** appears next to its chevron, with tips one
+that tells you: a small **+3** appears above its chevron, with tips one
 right-click away. No other utility detects this, and Pelmet does it with zero
 permissions.
+
+Pelmet also recognizes software-drawn islands on displays without a physical
+notch. Vibe Island has a built-in compatibility profile. Other persistent,
+top-center accessory windows are detected locally and can be enabled and
+calibrated in Settings. Pelmet models the resting width for coverage detection,
+so hover expansion does not make the covered-icon count jump.
 
 ## How it works — no private APIs, no permissions
 
@@ -57,9 +63,10 @@ Pelmet places two items in your menu bar:
 - This is the same battle-tested technique used by Hidden Bar and Dozer. It
   needs **no** Screen Recording or Accessibility permission.
 - If the expanded icons don't all fit beside the notch, the toggle shows a
-  count (e.g. **› +3**) instead of letting them vanish without a trace.
+  compact count above its chevron instead of letting them vanish without a trace.
   Right-click it for ways to make room. Detection uses only public
-  window-geometry metadata — nothing that prompts for permissions or lights
+  window-geometry metadata. Software-island detection uses the same public
+  metadata, with unknown apps disabled until you opt in. Nothing prompts for permissions or lights
   the screen-recording indicator.
 
 ## Privacy
@@ -75,7 +82,7 @@ SDKs. It makes two kinds of network calls, both under your control:
 - **Anonymous usage ping**: one tiny event per day (app version, macOS version,
   chip type, which Pelmet features are on) so we know how many people use Pelmet
   and what to prioritize. No personal data, no menu bar contents, never anything
-  about the other apps you run; IP addresses are discarded on arrival. An in-app
+  about the other apps you run, including software-island candidates; IP addresses are discarded on arrival. An in-app
   notice appears before the first ping is ever sent. Turn it off in Settings,
   with `defaults write com.ismatbabirli.Pelmet telemetryEnabled -bool NO`, or
   with `DO_NOT_TRACK=1`.

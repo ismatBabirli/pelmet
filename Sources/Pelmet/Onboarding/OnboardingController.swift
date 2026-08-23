@@ -69,7 +69,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         }
     }
 
-    /// The first time icons are detected hidden by the notch: explain the
+    /// The first time icons are detected covered in the menu bar: explain the
     /// count once, quietly. New users learn the Shelf here too — no second
     /// popover for them.
     func maybeShowSwallowedEducation(count: Int, toggle: NSStatusItem) {
@@ -81,7 +81,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         let phrase = count == 1 ? "1 icon doesn't fit" : "\(count) icons don't fit"
         guard show(
             title: phrase,
-            message: "The notch hides menu bar icons that run out of room, and macOS gives no warning. "
+            message: "A camera notch or software island can cover menu bar icons, and macOS gives no warning. "
                 + "Pelmet shows a count beside its chevron whenever that happens. "
                 + "Click the chevron to open the Shelf and see exactly what's hidden; "
                 + "right-click for ways to make room.",
@@ -106,7 +106,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         guard show(
             title: "See what's hidden",
             message: "New: when the chevron shows +\(count), click it to open the Shelf, "
-                + "a panel listing the icons the notch hid.\(shelfHint)",
+                + "a panel listing the covered icons.\(shelfHint)",
             buttonTitle: "Got It",
             on: button
         ) else { return }
@@ -121,7 +121,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
     func maybeOfferOneClick(toggle: NSStatusItem) {
         guard activePopover == nil,
               !Preferences.didOfferOneClick,
-              LayoutStatus.shared.hasNotchedDisplay,
+              LayoutStatus.shared.hasMenuBarObstruction,
               !Preferences.activationEngineEnabled,
               StatusItemActivationEngine.shared.availability != .granted,
               let button = toggle.button else { return }
@@ -130,7 +130,7 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
 
         guard show(
             title: "Open hidden icons with one click",
-            message: "Turn on One-Click Access and Pelmet can open the icons the notch hides "
+            message: "Turn on One-Click Access and Pelmet can open covered menu bar icons "
                 + "when they offer a macOS Accessibility action. It never creates mouse events, "
                 + "moves your pointer, or reads your screen, and you can turn it off any time in "
                 + "Settings → One-Click Access.",

@@ -45,4 +45,66 @@ enum WindowListSource {
             )
         }
     }
+
+    /// Top-center overlay candidates using the same permission-free metadata
+    /// as status-item discovery. App identity is resolved locally from the
+    /// owning PID and never leaves the Mac.
+    static func softwareIslandWindows() -> [SoftwareIslandDetection] {
+        guard
+            let primary = NSScreen.screens.first,
+            let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]
+        else { return [] }
+
+        let primaryMaxY = primary.frame.maxY
+        let ownPID = Int32(ProcessInfo.processInfo.processIdentifier)
+
+        return list.compactMap { info in
+            guard
+                let level = info[kCGWindowLayer as String] as? Int,
+                level > statusItemWindowLevel,
+                info[kCGWindowIsOnscreen as String] as? Bool == true,
+                let pid = info[kCGWindowOwnerPID as String] as? Int32,
+                pid != ownPID,
+                let bounds = info[kCGWindowBounds as String] as? [String: CGFloat],
+                let x = bounds["X"], let y = bounds["Y"],
+                let width = bounds["Width"], let height = bounds["Height"],
+                width > 0, height > 0,
+                let app = NSRunningApplication(processIdentifier: pid),
+                let bundleIdentifier = app.bundleIdentifier
+            else { return nil }
+
+            let frame = CGRect(
+                x: x,
+                y: primaryMaxY - y - height,
+                width: width,
+                height: height
+            )
+            guard let screen = NSScreen.screens.first(where: { candidate in
+                frame.intersects(candidate.frame)
+                    && abs(frame.maxY - candidate.frame.maxY)
+                        <= SoftwareIslandCandidateClassifier.topEdgeTolerance
+            }) else { return nil }
+
+            let isSystemOwner = bundleIdentifier.hasPrefix("com.apple.")
+            let observation = SoftwareIslandWindowObservation(
+                frame: frame,
+                layer: level,
+                bundleIdentifier: bundleIdentifier,
+                isAccessoryApplication: app.activationPolicy == .accessory,
+                isSystemOwner: isSystemOwner
+            )
+            guard SoftwareIslandCandidateClassifier.isCandidate(
+                observation,
+                screenFrame: screen.frame,
+                menuBarHeight: max(NSStatusBar.system.thickness, screen.safeAreaInsets.top)
+            ) else { return nil }
+
+            return SoftwareIslandDetection(
+                bundleIdentifier: bundleIdentifier,
+                displayName: app.localizedName ?? bundleIdentifier,
+                screenFrame: screen.frame,
+                outerWindowFrame: observation.frame
+            )
+        }
+    }
 }

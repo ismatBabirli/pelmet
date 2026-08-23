@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Detect permission-free top-center software-island candidates from local window
+  geometry. Vibe Island works automatically through the built-in compatibility
+  registry; unknown apps stay disabled until enabled and calibrated in Menu Bar
+  Space settings.
+- Model a stable resting width for software-island detection so transient
+  hover expansion does not make the covered-icon count jump. Calibration
+  changes reclassify icons live while the Settings slider moves.
+
+### Changed
+
+- The hidden-icon count, Shelf, one-click access, and make-room guidance now work
+  for both physical camera notches and enabled software islands.
+- Software-island app identities and bundle identifiers remain local and are not
+  added to anonymous telemetry.
+
+### Fixed
+
+- Enabling a software island no longer triggers Pelmet's physical-notch control
+  rescue path, which could repack menu items and move a neighboring icon under
+  the island.
+- Covered-icon and update badges now render inside Pelmet's fixed-width toggle,
+  so appearing or disappearing badge text cannot shift neighboring menu items.
+- Software-island launch and quit events now update Settings even when the
+  covered-icon count itself does not change, such as while Pelmet is collapsed.
+- One-Click Access remains available in Settings while enabled after its island
+  app quits, preserving the in-app path to turn the feature off.
+- Software-island discovery now retains every detected display for an app and
+  scans Window Server only once per layout measurement.
+
 ## [0.7.0] - 2026-08-10
 
 ### Added
