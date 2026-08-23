@@ -1,4 +1,5 @@
 import SwiftUI
+import PelmetCore
 
 /// The sidebar entries of the Settings window. Raw values are persisted
 /// (`Preferences.settingsPane`) — don't rename cases casually.
@@ -17,11 +18,16 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     /// fits scroll-free; panes scroll if they ever outgrow it.
     static let contentHeight: CGFloat = 560
 
-    /// Panes offered for the current hardware — same gate as the
-    /// context-menu entry in MenuBarManager: One-Click Access only exists
-    /// where the notch makes it relevant.
-    static func available(hasNotchedDisplay: Bool) -> [SettingsPane] {
-        hasNotchedDisplay ? allCases : [.general, .menuBarSpace, .about]
+    /// One-Click Access appears when an obstruction makes it relevant and
+    /// remains available while enabled, even if that obstruction's app quits.
+    static func available(
+        hasMenuBarObstruction: Bool,
+        oneClickAccessEnabled: Bool
+    ) -> [SettingsPane] {
+        OneClickAccessPanePolicy.isAvailable(
+            hasMenuBarObstruction: hasMenuBarObstruction,
+            isEnabled: oneClickAccessEnabled
+        ) ? allCases : [.general, .menuBarSpace, .about]
     }
 
     var title: String {

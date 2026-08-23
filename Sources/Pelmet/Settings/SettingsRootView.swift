@@ -12,11 +12,16 @@ extension Notification.Name {
 struct SettingsRootView: View {
 
     @ObservedObject private var status = LayoutStatus.shared
+    @AppStorage(Preferences.Keys.activationEngineEnabled)
+    private var oneClickAccessEnabled = false
     @State private var selection: SettingsPane =
         SettingsPane(rawValue: Preferences.settingsPane) ?? .general
 
     var body: some View {
-        let available = SettingsPane.available(hasNotchedDisplay: status.hasNotchedDisplay)
+        let available = SettingsPane.available(
+            hasMenuBarObstruction: status.hasMenuBarObstruction,
+            oneClickAccessEnabled: oneClickAccessEnabled
+        )
         // Render a valid pane even before onReceive normalizes a stale
         // selection (e.g. "oneClickAccess" persisted on a non-notched Mac).
         let shown = available.contains(selection) ? selection : .general
@@ -72,10 +77,21 @@ struct SettingsRootView: View {
         .frame(height: SettingsPane.contentHeight)
         // If One-Click Access vanishes while selected (lid closed on a
         // notched MacBook driving an external display), fall back to General.
-        // removeDuplicates is mandatory: LayoutStatus re-assigns
-        // hasNotchedDisplay on every layout snapshot.
-        .onReceive(LayoutStatus.shared.$hasNotchedDisplay.removeDuplicates()) { hasNotch in
-            if !SettingsPane.available(hasNotchedDisplay: hasNotch).contains(selection) {
+        // removeDuplicates is mandatory: LayoutStatus re-assigns the value
+        // on every layout snapshot.
+        .onReceive(LayoutStatus.shared.$hasMenuBarObstruction.removeDuplicates()) { hasObstruction in
+            if !SettingsPane.available(
+                hasMenuBarObstruction: hasObstruction,
+                oneClickAccessEnabled: oneClickAccessEnabled
+            ).contains(selection) {
+                selection = .general
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UserDefaults.didChangeNotification)) { _ in
+            if !SettingsPane.available(
+                hasMenuBarObstruction: status.hasMenuBarObstruction,
+                oneClickAccessEnabled: Preferences.activationEngineEnabled
+            ).contains(selection) {
                 selection = .general
             }
         }

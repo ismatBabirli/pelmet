@@ -94,7 +94,7 @@ final class StatusItemActivationEngine: StatusItemActivating {
     var activatableDescriptors: [EngineItemDescriptor] {
         guard canActivate else { return [] }
         return directory.records
-            .filter { $0.visibility == .swallowedByNotch }
+            .filter { $0.visibility.isObstructed }
             .map { record in
                 EngineItemDescriptor(
                     token: record.id,
@@ -445,7 +445,7 @@ final class StatusItemActivationEngine: StatusItemActivating {
         // failure ("Hidden item N", no logo). When it's a transient (element
         // positions read mid-animation), a re-read moments later fixes it.
         let unidentifiedSwallowed = records.contains {
-            $0.visibility == .swallowedByNotch && $0.identity == nil
+            $0.visibility.isObstructed && $0.identity == nil
         }
         if canActivate, unidentifiedSwallowed,
            !axCache.isEmpty, healAttempts < 2 {

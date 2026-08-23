@@ -30,12 +30,19 @@ public enum ItemVisibility: Equatable {
     /// Frame in or left of the notch while the bar is full — macOS gives it
     /// no space and no indication. The user cannot see or reach it.
     case swallowedByNotch
+    /// Covered by a software-drawn island in the menu bar. Unlike a
+    /// physical notch, items to the island's left remain reachable.
+    case coveredBySoftwareIsland
     /// Pushed past the left screen edge by Pelmet's own inflated separator —
     /// expected and intentional while collapsed.
     case offscreenLeft
     /// Almost certainly a stale twin window, not a real icon (see below) —
     /// never counted.
     case suspectedGhost
+
+    public var isObstructed: Bool {
+        self == .swallowedByNotch || self == .coveredBySoftwareIsland
+    }
 }
 
 /// A status-item window as the window server reports it: a frame in AppKit
@@ -79,13 +86,22 @@ public struct MenuBarGeometry: Equatable {
     public let screenFrame: CGRect
     /// nil on screens without a camera housing.
     public let notchRect: CGRect?
+    /// A permission-free, locally detected software island reservation.
+    /// The rect describes its stable resting footprint, not hover expansion.
+    public let softwareOverlayRect: CGRect?
     /// Height of the menu bar band at the top of `screenFrame`.
     public let menuBarHeight: CGFloat
 
-    public init(screenFrame: CGRect, notchRect: CGRect?, menuBarHeight: CGFloat) {
+    public init(
+        screenFrame: CGRect,
+        notchRect: CGRect?,
+        menuBarHeight: CGFloat,
+        softwareOverlayRect: CGRect? = nil
+    ) {
         self.screenFrame = screenFrame
         self.notchRect = notchRect
         self.menuBarHeight = menuBarHeight
+        self.softwareOverlayRect = softwareOverlayRect
     }
 
     /// The horizontal strip status items live in on this screen.
@@ -105,7 +121,7 @@ public struct LayoutClassification: Equatable {
     public let toggleVisible: Bool
 
     public var swallowedCount: Int {
-        items.filter { $0.visibility == .swallowedByNotch }.count
+        items.filter { $0.visibility.isObstructed }.count
     }
 
     public var offscreenLeftCount: Int {
@@ -174,14 +190,20 @@ public enum MenuBarLayoutClassifier {
         if isCollapsed {
             separatorHealth = .unknown
         } else if let sep = ownSeparatorFrame {
-            separatorHealth = isSwallowed(sep, geometry: geometry) ? .swallowed : .visible
+            // Only a physical notch should trigger Pelmet's status-item rescue
+            // machinery. Treating a software overlay as a missing separator
+            // makes MenuBarManager recreate its controls, which repacks other
+            // apps' items and can move one underneath the overlay.
+            separatorHealth = isSwallowedByNotch(sep, geometry: geometry) ? .swallowed : .visible
         } else {
             separatorHealth = .unknown
         }
 
         let toggleVisible: Bool
         if let toggle = ownToggleFrame {
-            toggleVisible = !isSwallowed(toggle, geometry: geometry)
+            // Software-island coverage is observational. It must never feed
+            // back into rescueToggleIfNeeded and perturb the menu-bar layout.
+            toggleVisible = !isSwallowedByNotch(toggle, geometry: geometry)
                 && toggle.maxX <= geometry.screenFrame.maxX + frameMatchTolerance
         } else {
             toggleVisible = false
@@ -231,17 +253,27 @@ public enum MenuBarLayoutClassifier {
             // collapse's mirror windows lingering there).
             return isCollapsed ? .offscreenLeft : .suspectedGhost
         }
-        if isSwallowed(frame, geometry: geometry) {
+        if isSwallowedByNotch(frame, geometry: geometry) {
             return .swallowedByNotch
+        }
+        if isCoveredBySoftwareIsland(frame, geometry: geometry) {
+            return .coveredBySoftwareIsland
         }
         return .visible
     }
 
-    private static func isSwallowed(_ frame: CGRect, geometry: MenuBarGeometry) -> Bool {
+    private static func isSwallowedByNotch(_ frame: CGRect, geometry: MenuBarGeometry) -> Bool {
         guard let notch = geometry.notchRect else { return false }
         // Items never render in or left of the notch; a band frame there is
         // invisible. Small inset absorbs frames that merely kiss the edge.
         return frame.intersects(notch.insetBy(dx: 2, dy: 0)) || frame.maxX <= notch.minX + 2
+    }
+
+    private static func isCoveredBySoftwareIsland(_ frame: CGRect, geometry: MenuBarGeometry) -> Bool {
+        guard let island = geometry.softwareOverlayRect else { return false }
+        // Software islands cover only their own footprint. macOS can still
+        // draw and activate menu bar items on either side of that footprint.
+        return frame.intersects(island.insetBy(dx: 2, dy: 0))
     }
 
     private static func matches(_ a: CGRect, _ b: CGRect) -> Bool {

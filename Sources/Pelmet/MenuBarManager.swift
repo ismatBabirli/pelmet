@@ -25,6 +25,12 @@ final class MenuBarManager: NSObject {
     // MARK: - Configuration
 
     private let expandedSeparatorLength: CGFloat = 10
+    /// The toggle never changes width when a covered-icon or update badge
+    /// appears. A variable-length title repacks every item to its left, which
+    /// can itself move an otherwise safe icon underneath a software island.
+    // AppKit adds 16 pt of status-item chrome, so a 10 pt content length
+    // preserves the original 26 pt window footprint.
+    private let toggleItemLength: CGFloat = 10
 
     /// Collapse works by inflating the separator so items left of it are
     /// pushed past the screen edge. Bounded because huge lengths misbehave:
@@ -73,9 +79,7 @@ final class MenuBarManager: NSObject {
     func setUp() {
         seedFirstLaunchPositionsIfNeeded()
 
-        // variableLength so the "+N" overflow count fits next to the chevron;
-        // with an empty title the width matches the old square item.
-        toggleItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        toggleItem = NSStatusBar.system.statusItem(withLength: toggleItemLength)
         toggleItem.autosaveName = toggleAutosaveName
         toggleItem.behavior = []
         // Assigning autosaveName adopts persisted state, so un-hide AFTER it —
@@ -473,7 +477,7 @@ final class MenuBarManager: NSObject {
         toggleItem = StatusItemRescuer.recreate(
             toggleItem,
             autosaveName: toggleAutosaveName,
-            length: NSStatusItem.variableLength,
+            length: toggleItemLength,
             preferredPosition: 0,
             configure: { [weak self] item in self?.configureToggleButton(item) }
         )
@@ -548,25 +552,19 @@ final class MenuBarManager: NSObject {
         guard let button = toggleItem.button else { return }
 
         let symbol = isCollapsed ? "chevron.left" : "chevron.right"
-        button.image = NSImage(
-            systemSymbolName: symbol,
-            accessibilityDescription: isCollapsed ? "Show hidden icons" : "Hide icons"
-        )
-
         let showCount = !isCollapsed && swallowedCount > 0 && Preferences.showSwallowedCount
         let updatePresentation = MenuBarUpdatePresentation(
             swallowedCount: swallowedCount,
             showsSwallowedCount: showCount,
             availableVersion: updateAvailableVersion
         )
-        if !updatePresentation.badgeText.isEmpty {
-            button.attributedTitle = NSAttributedString(
-                string: updatePresentation.badgeText,
-                attributes: [.font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)]
-            )
-        } else {
-            button.attributedTitle = NSAttributedString(string: "")
-        }
+        button.image = toggleImage(
+            symbolName: symbol,
+            badgeText: updatePresentation.compactBadgeText,
+            accessibilityDescription: isCollapsed ? "Show hidden icons" : "Hide icons"
+        )
+        button.imagePosition = .imageOnly
+        button.attributedTitle = NSAttributedString(string: "")
 
         var tooltip: String
         var accessibilityValue: String
@@ -575,17 +573,17 @@ final class MenuBarManager: NSObject {
             tooltip = "Pelmet: show hidden icons\(toggleHint)"
             accessibilityValue = "Icons hidden"
         } else if separatorSwallowed {
-            tooltip = "The menu bar is full. Pelmet's divider is hidden by the notch. Right-click for options."
+            tooltip = "The menu bar is full. Pelmet's divider is covered. Right-click for options."
             accessibilityValue = "Icons shown. The divider is hidden; the menu bar is full."
         } else if swallowedCount > 0 {
             // "Click to see them" only when a click actually opens the Shelf
             // — i.e. the badge is visible (showCount) and the Shelf is on.
             if showCount && Preferences.shelfEnabled {
-                tooltip = "\(countPhrase(swallowedCount)) by the notch. Click to see them; right-click for options."
-                accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch. Click to open the Shelf."
+                tooltip = "\(countPhrase(swallowedCount)). Click to see them; right-click for options."
+                accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)). Click to open the Shelf."
             } else {
-                tooltip = "\(countPhrase(swallowedCount)) by the notch. Right-click for ways to make room."
-                accessibilityValue = "Icons shown. \(countPhrase(swallowedCount)) by the notch."
+                tooltip = "\(countPhrase(swallowedCount)). Right-click for ways to make room."
+                accessibilityValue = "Icons shown. \(countPhrase(swallowedCount))."
             }
         } else {
             tooltip = "Pelmet: hide icons\(toggleHint)"
@@ -601,10 +599,61 @@ final class MenuBarManager: NSObject {
         button.setAccessibilityValue(accessibilityValue)
     }
 
+    /// Draws the state chevron and a compact badge inside one fixed-width
+    /// template image. Putting badge text beside the chevron would widen the
+    /// item and alter the layout Pelmet is observing.
+    private func toggleImage(
+        symbolName: String,
+        badgeText: String,
+        accessibilityDescription: String
+    ) -> NSImage? {
+        guard !badgeText.isEmpty else {
+            return NSImage(
+                systemSymbolName: symbolName,
+                accessibilityDescription: accessibilityDescription
+            )
+        }
+
+        let imageSize = NSSize(width: 10, height: 18)
+        let image = NSImage(size: imageSize, flipped: false) { bounds in
+            let symbolRect = NSRect(x: 2, y: 0, width: 6, height: 8)
+            let configuration = NSImage.SymbolConfiguration(pointSize: 7, weight: .semibold)
+            NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+                .withSymbolConfiguration(configuration)?
+                .draw(in: symbolRect)
+
+            let badgeRect = NSRect(x: 0, y: 8, width: bounds.width, height: 10)
+            let measuringFont = NSFont.monospacedDigitSystemFont(ofSize: 7, weight: .medium)
+            let measuringAttributes: [NSAttributedString.Key: Any] = [.font: measuringFont]
+            let measuredWidth = (badgeText as NSString).size(
+                withAttributes: measuringAttributes
+            ).width
+            let scale = measuredWidth > 0 ? min(1, badgeRect.width / measuredWidth) : 1
+            let font = NSFont.monospacedDigitSystemFont(
+                ofSize: max(4, 7 * scale),
+                weight: .medium
+            )
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: NSColor.labelColor,
+            ]
+            let textSize = (badgeText as NSString).size(withAttributes: attributes)
+            let point = NSPoint(
+                x: badgeRect.midX - textSize.width / 2,
+                y: badgeRect.midY - textSize.height / 2
+            )
+            (badgeText as NSString).draw(at: point, withAttributes: attributes)
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = accessibilityDescription
+        return image
+    }
+
     private func countPhrase(_ count: Int) -> String {
         count == 1
-            ? "1 icon doesn't fit and is hidden"
-            : "\(count) icons don't fit and are hidden"
+            ? "1 icon is covered and unavailable"
+            : "\(count) icons are covered and unavailable"
     }
 
     private func separatorImage() -> NSImage? {
@@ -626,7 +675,7 @@ final class MenuBarManager: NSObject {
             statusLines.append(
                 isCollapsed
                     ? "\(fitPhrase) even while collapsed"
-                    : "\(fitPhrase), hidden by the notch"
+                    : "\(fitPhrase), covered by the notch or a software island"
             )
         }
         if !statusLines.isEmpty {
@@ -699,7 +748,7 @@ final class MenuBarManager: NSObject {
         // A permanent path to enable one-click open — survives a dismissed or
         // never-seen onboarding popover. Only where it's relevant (notched Mac,
         // not yet granted).
-        if LayoutStatus.shared.hasNotchedDisplay, shelfEngine.availability != .granted {
+        if LayoutStatus.shared.hasMenuBarObstruction, shelfEngine.availability != .granted {
             let oneClickEntry = NSMenuItem(
                 title: "Open Hidden Icons with One Click…",
                 action: #selector(enableOneClickFromMenu),

@@ -325,4 +325,60 @@ struct MenuBarLayoutClassifierTests {
         #expect(result.separatorHealth == .visible)
         #expect(result.toggleVisible)
     }
+
+    @Test func testSoftwareIslandCoversIntersectingItemWithoutPhysicalNotch() {
+        let flat = MenuBarGeometry(
+            screenFrame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            notchRect: nil,
+            menuBarHeight: 30,
+            softwareOverlayRect: CGRect(x: 790, y: 1050, width: 340, height: 30)
+        )
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [RawStatusWindow(frame: CGRect(x: 800, y: 1050, width: 40, height: 30))],
+            ownSeparatorFrame: CGRect(x: 1500, y: 1050, width: 26, height: 30),
+            ownToggleFrame: CGRect(x: 1530, y: 1050, width: 38, height: 30),
+            isCollapsed: false,
+            geometry: flat
+        )
+        #expect(result.swallowedCount == 1)
+        #expect(result.items[0].visibility == .coveredBySoftwareIsland)
+    }
+
+    @Test func testSoftwareIslandDoesNotHideItemsToItsLeft() {
+        let flat = MenuBarGeometry(
+            screenFrame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            notchRect: nil,
+            menuBarHeight: 30,
+            softwareOverlayRect: CGRect(x: 790, y: 1050, width: 340, height: 30)
+        )
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [RawStatusWindow(frame: CGRect(x: 700, y: 1050, width: 40, height: 30))],
+            ownSeparatorFrame: CGRect(x: 1500, y: 1050, width: 26, height: 30),
+            ownToggleFrame: CGRect(x: 1530, y: 1050, width: 38, height: 30),
+            isCollapsed: false,
+            geometry: flat
+        )
+        #expect(result.swallowedCount == 0)
+        #expect(result.items[0].visibility == .visible)
+    }
+
+    @Test func testSoftwareIslandDoesNotTriggerPelmetControlRescue() {
+        let flat = MenuBarGeometry(
+            screenFrame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            notchRect: nil,
+            menuBarHeight: 30,
+            softwareOverlayRect: CGRect(x: 790, y: 1050, width: 340, height: 30)
+        )
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [],
+            ownSeparatorFrame: CGRect(x: 800, y: 1050, width: 26, height: 30),
+            ownToggleFrame: CGRect(x: 830, y: 1050, width: 38, height: 30),
+            isCollapsed: false,
+            geometry: flat
+        )
+
+        #expect(result.separatorHealth == .visible)
+        #expect(result.toggleVisible)
+    }
+
 }

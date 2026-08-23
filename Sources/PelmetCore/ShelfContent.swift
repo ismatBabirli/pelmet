@@ -66,7 +66,7 @@ public struct ShelfEntryModel: Equatable, Identifiable {
 /// Pure derivation of Shelf rows from a layout classification.
 ///
 /// Source-of-truth rule (badge parity): the rows are exactly the
-/// classification's `.swallowedByNotch` items — the same set the "+N" badge
+/// classification's obstructed items, the same set the "+N" badge
 /// counts. Engine items only ENRICH rows (title, activation token); they
 /// never add or remove any.
 public enum ShelfContentDeriver {
@@ -83,7 +83,7 @@ public enum ShelfContentDeriver {
         engineItems: [EngineItemDescriptor]
     ) -> [ShelfEntryModel] {
         let swallowed = classification.items
-            .filter { $0.visibility == .swallowedByNotch }
+            .filter { $0.visibility.isObstructed }
             // Defensively drop Pelmet's own windows if frame exclusion ever
             // slips — better a missing row than Pelmet listing itself.
             .filter { !$0.ownerPIDs.contains(ownPID) }

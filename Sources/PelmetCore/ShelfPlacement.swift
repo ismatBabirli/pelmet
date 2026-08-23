@@ -18,6 +18,7 @@ public enum ShelfPlacement {
         let top = screen.maxY - geometry.menuBarHeight - gap
 
         let preferredCenterX = anchorFrame?.midX
+            ?? geometry.softwareOverlayRect?.midX
             ?? geometry.notchRect?.midX
             ?? screen.midX
 
