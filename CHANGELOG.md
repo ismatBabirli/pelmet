@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-24
+
 ### Added
 
 - Detect permission-free top-center software-island candidates from local window
   geometry. Vibe Island works automatically through the built-in compatibility
   registry; unknown apps stay disabled until enabled and calibrated in Menu Bar
-  Space settings.
+  Space settings. Thanks to [Yurii Rashkovskii](https://github.com/yrashk) for
+  contributing this feature in [#43](https://github.com/ismatBabirli/pelmet/pull/43).
 - Model a stable resting width for software-island detection so transient
   hover expansion does not make the covered-icon count jump. Calibration
   changes reclassify icons live while the Settings slider moves.
@@ -244,7 +247,8 @@ First public release — the working MVP.
 - Requires **macOS 13 Ventura** or later.
 - The core hide/show experience needs **zero special permissions**.
 
-[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/ismatBabirli/pelmet/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/ismatBabirli/pelmet/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/ismatBabirli/pelmet/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/ismatBabirli/pelmet/compare/v0.5.0...v0.6.0

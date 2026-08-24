@@ -133,5 +133,4 @@ struct SoftwareIslandTests {
 
         #expect(groups.map(\.bundleIdentifier) == ["a.example.island", "z.example.island"])
     }
-
 }

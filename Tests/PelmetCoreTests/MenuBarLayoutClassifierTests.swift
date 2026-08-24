@@ -380,5 +380,4 @@ struct MenuBarLayoutClassifierTests {
         #expect(result.separatorHealth == .visible)
         #expect(result.toggleVisible)
     }
-
 }
