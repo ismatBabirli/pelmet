@@ -17,15 +17,21 @@ enum WindowListSource {
     /// window server reports one. Includes duplicates and Pelmet's own items
     /// — `MenuBarLayoutClassifier` filters both.
     ///
+    /// nil means the window server gave us nothing to read (a degraded call,
+    /// where the right move is to keep the last known state). An empty array
+    /// is a real answer: the call worked and there are no status-item
+    /// windows. Those two must stay distinguishable, because on macOS 27's
+    /// merged menu bar "none, permanently" is the normal reading.
+    ///
     /// Ownership caveat: on macOS 26 (Tahoe) Control Center re-parents
     /// third-party status-item windows, so `ownerPID` is Control Center's
     /// for all of them. Consumers must treat Control-Center-owned frames as
     /// "owner unknown" rather than trusting the PID.
-    static func statusItemWindows() -> [RawStatusWindow] {
+    static func statusItemWindows() -> [RawStatusWindow]? {
         guard
             let primary = NSScreen.screens.first,
             let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]]
-        else { return [] }
+        else { return nil }
 
         // CG global coordinates are top-left-origin; x is shared, y flips
         // around the primary screen's top edge.

@@ -9,6 +9,7 @@ struct GeneralPaneView: View {
 
     @ObservedObject private var updater = UpdaterController.shared
     @ObservedObject private var hotkeys = HotkeyStatus.shared
+    @ObservedObject private var layout = LayoutStatus.shared
     /// Why the last recording attempt was refused, per action. Cleared as soon as
     /// a combination is accepted or removed.
     @State private var rejections: [HotkeyAction: String] = [:]
@@ -28,6 +29,23 @@ struct GeneralPaneView: View {
     var body: some View {
         Form {
             Section("Behavior") {
+                // Settings is the escape hatch someone reaches for when the
+                // chevron does nothing, so the reason belongs here too. The
+                // toggles stay usable: they are saved preferences that matter
+                // again on any Mac where hiding works.
+                if !layout.canHideIcons {
+                    Label {
+                        Text("This version of macOS draws the whole menu bar as a single piece, "
+                            + "so Pelmet can't hide icons on this Mac. These settings are saved "
+                            + "but have no effect here.")
+                    } icon: {
+                        Image(systemName: "exclamationmark.triangle")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Toggle("Show hidden items on hover", isOn: $showOnHover)
                 Text("Move the pointer into the menu bar to reveal managed items.")
                     .font(.caption)

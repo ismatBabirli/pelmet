@@ -101,12 +101,16 @@ gracefully:
 - Appearance: `NSVisualEffectView` blur, rounded corners, respects Reduce
   Transparency / Reduce Motion. Enabled on the notched built-in display.
 
-> **macOS 27 "Golden Gate" (ships ~Sept 2026)** adds a native overflow button
-> and merges all status items into a single window, breaking the expanding-
-> spacer mechanic and per-item detection every manager relies on. Pelmet's
-> engine already degrades to a frames-only honest state via a runtime
-> re-parenting heuristic (the same tripwire that handles Tahoe); a dedicated
-> macOS 27 compatibility pass is its own follow-up. The Shelf's audience
+> **macOS 27 "Golden Gate": confirmed, not predicted.** Measured on 27.0
+> (build 26A428): the whole menu bar is one composited system window, nothing
+> is reported at the status-item window level, every `NSStatusItem` hands back
+> the same placeholder frame, and inflating a spacer displaces nothing. That
+> kills the expanding-spacer mechanic and the per-item detection every manager
+> relies on, Pelmet's included. Pelmet now detects the merged bar at
+> runtime (`StatusItemWindowModel`) and refuses to fake a collapse, so the
+> chevron never claims icons are hidden when they are not. Restoring the
+> feature itself is a separate compatibility pass and may not be possible
+> without permissions the zero-permission core rules out. The Shelf's audience
 > until then is the large Sequoia/Tahoe installed base, which gets nothing
 > native.
 

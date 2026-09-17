@@ -51,6 +51,7 @@ final class NotchLayoutMonitor {
         let items: [ItemMeasurement]
         let separatorHealth: SeparatorHealth
         let toggleVisible: Bool
+        let windowModel: StatusItemWindowModel
 
         init(classification: LayoutClassification) {
             items = classification.items.map {
@@ -58,6 +59,7 @@ final class NotchLayoutMonitor {
             }
             separatorHealth = classification.separatorHealth
             toggleVisible = classification.toggleVisible
+            windowModel = classification.windowModel
         }
     }
     private var candidate: MeasurementDigest?
@@ -159,8 +161,10 @@ final class NotchLayoutMonitor {
 
         guard let geometry = currentGeometry() else { return }
         lastGeometry = geometry
-        let rawWindows = WindowListSource.statusItemWindows()
-        guard !rawWindows.isEmpty else { return } // degraded read; keep prior state
+        // nil is a degraded call, so keep prior state. An empty list is a real
+        // reading and must reach the classifier: on a merged menu bar it is
+        // the permanent one, and the classifier is what tells the two apart.
+        guard let rawWindows = WindowListSource.statusItemWindows() else { return }
 
         let classification = MenuBarLayoutClassifier.classify(
             rawItems: rawWindows,
@@ -187,7 +191,7 @@ final class NotchLayoutMonitor {
             confirmedMeasurement = digest
             confirmed = classification
             if let flag = ProcessInfo.processInfo.environment["PELMET_DEBUG_LAYOUT"] {
-                print("Pelmet layout: swallowed=\(classification.swallowedCount) offscreenLeft=\(classification.offscreenLeftCount) separator=\(classification.separatorHealth) toggleVisible=\(classification.toggleVisible)")
+                print("Pelmet layout: swallowed=\(classification.swallowedCount) offscreenLeft=\(classification.offscreenLeftCount) separator=\(classification.separatorHealth) toggleVisible=\(classification.toggleVisible) windowModel=\(classification.windowModel)")
                 if flag == "verbose" {
                     let sep = separatorItem?.button?.window?.frame ?? .zero
                     let tog = toggleItem?.button?.window?.frame ?? .zero

@@ -55,12 +55,22 @@ struct MakeRoomView: View {
                 .foregroundStyle(.secondary)
             }
 
-            remedy(
-                symbol: "hand.draw",
-                title: "Hide icons with Pelmet",
-                text: "Hold ⌘ and drag icons you rarely use to the left of the ╱ divider, then "
-                    + "collapse with the ‹ chevron. Keep the essentials on its right."
-            )
+            if status.canHideIcons {
+                remedy(
+                    symbol: "hand.draw",
+                    title: "Hide icons with Pelmet",
+                    text: "Hold ⌘ and drag icons you rarely use to the left of the ╱ divider, then "
+                        + "collapse with the ‹ chevron. Keep the essentials on its right."
+                )
+            } else {
+                remedy(
+                    symbol: "exclamationmark.triangle",
+                    title: "Hiding icons is unavailable here",
+                    text: "This version of macOS draws the whole menu bar as a single piece, so the ╱ "
+                        + "divider no longer pushes anything off the edge and no third-party app can "
+                        + "hide what's in the bar. The options below are about making icons fit, not hiding them."
+                )
+            }
 
             remedy(
                 symbol: "arrow.left.and.right",

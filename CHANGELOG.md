@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Pelmet no longer reports a collapse it did not perform. macOS 27 draws the
+  whole menu bar as a single composited window, so inflating the ╱ divider
+  displaces nothing and no third-party app can hide what is in the bar. Pelmet
+  now detects that at runtime and says so on the chevron, in the right-click
+  menu and in Make Room, instead of flipping to the collapsed chevron over a
+  menu bar that never changed
+  ([#46](https://github.com/ismatBabirli/pelmet/issues/46)).
+- A collapsed state saved on an earlier macOS is undone at launch on macOS 27
+  rather than restored as a state the menu bar cannot actually be in, and
+  auto-rehide no longer runs there.
+
 ## [0.8.0] - 2026-08-24
 
 ### Added

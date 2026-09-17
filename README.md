@@ -151,6 +151,12 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 ### Troubleshooting
 
+- **Clicking the chevron doesn't hide anything (macOS 27).** macOS 27 draws the
+  whole menu bar as a single composited window, so the ╱ divider no longer
+  pushes anything past the screen edge and no third-party app can hide what is
+  in the bar. Pelmet detects this and tells you rather than flipping the
+  chevron over a menu bar that never changed. Right-click the chevron for the
+  remaining ways to free up menu bar space.
 - **Nothing appeared in the menu bar.** Pelmet's toggle and divider are
   seeded right next to the clock, the last spot macOS swallows, so this
   should be rare. If your bar is packed edge to edge, quit another menu bar

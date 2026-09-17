@@ -92,6 +92,23 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         Preferences.didShowShelfTip = true
     }
 
+    /// Answers a collapse this macOS cannot perform. Deliberately not a
+    /// once-only tip and not part of the launch chain: it replies to a
+    /// direct action, so it has to reply every time that action is taken.
+    func showCollapseUnavailableNotice(toggle: NSStatusItem) {
+        guard activePopover == nil, let button = toggle.button else { return }
+        _ = show(
+            title: "Pelmet can't hide icons here",
+            message: "This version of macOS draws the whole menu bar as a single piece. "
+                + "The divider no longer pushes anything past the screen edge, and no "
+                + "third-party app can hide what's in the bar. "
+                + "Pelmet leaves your icons where they are rather than flipping the "
+                + "chevron over a menu bar that never changed.",
+            buttonTitle: "OK",
+            on: button
+        )
+    }
+
     /// For users who learned the count BEFORE the Shelf existed: one quiet
     /// popover the next time something is actually hidden.
     func maybeShowShelfTip(count: Int, toggle: NSStatusItem) {
