@@ -127,18 +127,6 @@ public struct LayoutClassification: Equatable {
     public var offscreenLeftCount: Int {
         items.filter { $0.visibility == .offscreenLeft }.count
     }
-
-    /// The fields user-facing state hangs off; two consecutive measurements
-    /// must agree on this before the UI reacts (transient-noise guard).
-    public struct Digest: Equatable {
-        public let swallowedCount: Int
-        public let separatorHealth: SeparatorHealth
-        public let toggleVisible: Bool
-    }
-
-    public var digest: Digest {
-        Digest(swallowedCount: swallowedCount, separatorHealth: separatorHealth, toggleVisible: toggleVisible)
-    }
 }
 
 public enum MenuBarLayoutClassifier {
