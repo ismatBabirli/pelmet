@@ -62,6 +62,7 @@ final class MenuBarManager: NSObject {
     private var swallowedCount = 0
     private var separatorSwallowed = false
     private var latestClassification: LayoutClassification?
+    private var menuBarWindowModel: StatusItemWindowModel = .unknown
 
     private var toggleRescueAttempts = 0
     private var lastToggleRescue = Date.distantPast
@@ -252,8 +253,13 @@ final class MenuBarManager: NSObject {
     // MARK: - Public actions
 
     func toggle() {
-        isCollapsed ? expand() : collapse()
+        isCollapsed ? expand() : collapse(userInitiated: true)
     }
+
+    /// True once measurement has confirmed the menu bar is one composited
+    /// window (macOS 27). Inflating the divider displaces nothing there, so
+    /// collapsing is not a thing Pelmet can do, only a thing it can explain.
+    var collapseIsUnavailable: Bool { menuBarWindowModel == .merged }
 
     func expand(scheduleRehide: Bool = true) {
         setExpanded(persistState: true, scheduleRehide: scheduleRehide)
@@ -275,7 +281,18 @@ final class MenuBarManager: NSObject {
         NotchLayoutMonitor.shared.requestMeasurement(reason: .expandSettled)
     }
 
-    func collapse() {
+    /// `userInitiated` separates a click, hotkey or menu choice from the
+    /// rehide timer and the launch restore: only a person who just asked for
+    /// a collapse gets told why it did not happen.
+    func collapse(userInitiated: Bool = false) {
+        // Flipping the chevron over a bar that cannot move is the bug this
+        // guard exists for: the icons stay put and only Pelmet looks wrong.
+        guard !collapseIsUnavailable else {
+            if userInitiated {
+                OnboardingController.shared.showCollapseUnavailableNotice(toggle: toggleItem)
+            }
+            return
+        }
         // A Shelf left open over a collapsing bar would show stale rows.
         ShelfPanelController.shared.hide(animated: false)
         isCollapsed = true
@@ -357,9 +374,20 @@ final class MenuBarManager: NSObject {
 
     private func apply(_ classification: LayoutClassification) {
         latestClassification = classification
+        menuBarWindowModel = classification.windowModel
         swallowedCount = classification.swallowedCount
         separatorSwallowed = !isCollapsed && classification.separatorHealth == .swallowed
-        updateToggleIcon()
+
+        // A collapse that ran before the merged bar was confirmed (the launch
+        // restore, or a click during the first second) left the state saying
+        // "hidden" over icons that never moved. Put it back, so the chevron,
+        // the saved preference and the menu bar agree with each other.
+        if collapseIsUnavailable, isCollapsed {
+            // setExpanded refreshes the toggle itself.
+            setExpanded(persistState: true, scheduleRehide: false)
+        } else {
+            updateToggleIcon()
+        }
 
         refreshShelfEntries()
 
@@ -394,7 +422,11 @@ final class MenuBarManager: NSObject {
             ownPID: Int32(ProcessInfo.processInfo.processIdentifier),
             engineItems: shelfEngine.activatableDescriptors
         )
-        LayoutStatus.shared.refresh(swallowedCount: classification.swallowedCount, shelfEntries: entries)
+        LayoutStatus.shared.refresh(
+            swallowedCount: classification.swallowedCount,
+            shelfEntries: entries,
+            canHideIcons: classification.windowModel != .merged
+        )
         ShelfPanelController.shared.update(entries: entries)
     }
 
@@ -569,7 +601,11 @@ final class MenuBarManager: NSObject {
         var tooltip: String
         var accessibilityValue: String
         let toggleHint = HotkeyDisplay.parenthetical(for: HotkeyManager.shared.bindings.toggle)
-        if isCollapsed {
+        if collapseIsUnavailable {
+            tooltip = "This version of macOS draws the whole menu bar as one piece, "
+                + "so Pelmet can't hide icons here. Right-click for details."
+            accessibilityValue = "Hiding icons is unavailable on this version of macOS."
+        } else if isCollapsed {
             tooltip = "Pelmet: show hidden icons\(toggleHint)"
             accessibilityValue = "Icons hidden"
         } else if separatorSwallowed {
@@ -667,6 +703,9 @@ final class MenuBarManager: NSObject {
         // Status section — present only when there is something to say
         // (disabled informational rows, the Wi-Fi-menu pattern).
         var statusLines: [String] = []
+        if collapseIsUnavailable {
+            statusLines.append("Pelmet can't hide icons on this version of macOS")
+        }
         if separatorSwallowed {
             statusLines.append("Pelmet's divider is hidden; the menu bar is full")
         }
@@ -687,7 +726,9 @@ final class MenuBarManager: NSObject {
             let hint = NSMenuItem(title: "", action: nil, keyEquivalent: "")
             hint.isEnabled = false
             hint.attributedTitle = NSAttributedString(
-                string: "⌘-drag important icons toward the clock,\nor quit unused menu bar apps.",
+                string: collapseIsUnavailable
+                    ? "macOS now draws the menu bar as one piece, so no\nthird-party app can move or hide the icons in it."
+                    : "⌘-drag important icons toward the clock,\nor quit unused menu bar apps.",
                 attributes: [
                     .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
                     .foregroundColor: NSColor.secondaryLabelColor,
@@ -844,6 +885,7 @@ final class MenuBarManager: NSObject {
     private func scheduleRehideIfNeeded() {
         cancelRehide()
         guard !isCollapsed,
+              !collapseIsUnavailable,
               Preferences.autoRehide,
               !hoverMonitor.isPointerInMenuBar,
               UIActivityTracker.shared.openSurfaces == 0 else { return }

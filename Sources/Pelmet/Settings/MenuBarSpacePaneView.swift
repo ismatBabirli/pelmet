@@ -119,10 +119,7 @@ struct MenuBarSpacePaneView: View {
         .onReceive(NotificationCenter.default.publisher(
             for: .pelmetSoftwareIslandConfigurationDidChange
         )) { _ in
-            status.refresh(
-                swallowedCount: status.swallowedCount,
-                shelfEntries: status.shelfEntries
-            )
+            status.refreshObstruction()
         }
     }
 }

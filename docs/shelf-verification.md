@@ -157,3 +157,36 @@ nothing.
 42. **Corrupt value.** `defaults write com.ismatbabirli.Pelmet toggleShortcut
     -string garbage`, relaunch → falls back to ⌥⌘B with one os_log line and no
     crash, and the bad value is left in place for diagnosis.
+
+## Merged menu bar (macOS 27)
+
+macOS 27 composites the whole menu bar into a single system window: nothing is
+reported at the status-item window level, every `NSStatusItem` returns the same
+placeholder frame, and inflating the divider displaces nothing. Pelmet detects
+this at runtime and must never claim a collapse it did not perform. These steps
+need a Mac on macOS 27; on macOS 13 to 26 the same steps must show the ordinary
+collapse working, which is the regression half of this section.
+
+43. **Detection.** Run with `PELMET_DEBUG_LAYOUT=1`. Every confirmed line reports
+    `windowModel=merged` on macOS 27 and `windowModel=perItem` on macOS 26 and
+    earlier. A line reporting `unknown` means Pelmet could not read its own item
+    frames at all, which is neither and worth investigating.
+44. **Collapse is refused, visibly.** Click the chevron. No icon moves, the
+    chevron stays in its expanded state, and a popover explains that this macOS
+    draws the menu bar as one piece. The same happens from ⌥⌘B and from
+    Hide Icons in the right-click menu.
+45. **The chevron does not lie.** Hover it: the tooltip says Pelmet cannot hide
+    icons on this version of macOS. VoiceOver reads the same. Right-click: the
+    status section leads with that line and the advice below it is about fitting
+    icons, not hiding them.
+46. **A saved collapse is undone.** `defaults write com.ismatbabirli.Pelmet
+    isCollapsed -bool true`, relaunch. The divider glyph returns within about a
+    second, the chevron reads expanded, and `defaults read com.ismatbabirli.Pelmet
+    isCollapsed` is back to 0. Nothing oscillates afterwards.
+47. **Auto-rehide stays quiet.** With auto-rehide on and a short delay, leave the
+    bar alone for several delay periods. Pelmet never collapses and never shows
+    the explanation popover on its own: only a person asking for a collapse gets
+    an answer.
+48. **Make Room is honest.** Right-click → Make Room… leads with "Hiding icons is
+    unavailable here" instead of the ⌘-drag remedy. The spacing, Control Center
+    and quit-apps remedies are still listed.

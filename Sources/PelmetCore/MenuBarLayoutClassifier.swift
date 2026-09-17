@@ -81,6 +81,27 @@ public enum SeparatorHealth: Equatable {
     case unknown
 }
 
+/// Whether the window server still backs each status item with its own
+/// window. Everything Pelmet does rests on that: the expanding-spacer
+/// collapse works because inflating one item's window displaces the ones to
+/// its left, and every count and Shelf row is read from per-item frames.
+///
+/// macOS 27 composites the whole menu bar into a single system-owned window
+/// (verified on 27.0 build 26A428: nothing is reported at the status-item
+/// window level, every status item reports the same placeholder frame, and
+/// inflating a spacer moves nothing). Pelmet cannot hide icons there, so it
+/// has to know, rather than flip a chevron over a bar that never changed.
+public enum StatusItemWindowModel: Equatable {
+    /// One window per status item: frames are real and collapse works.
+    case perItem
+    /// One window for the whole menu bar: Pelmet can neither see the items
+    /// nor move them.
+    case merged
+    /// Pelmet's own frames were unreadable this measurement, so there is
+    /// nothing to look for and no conclusion to draw.
+    case unknown
+}
+
 /// Inputs are all in AppKit screen coordinates (bottom-left origin).
 public struct MenuBarGeometry: Equatable {
     public let screenFrame: CGRect
@@ -119,6 +140,19 @@ public struct LayoutClassification: Equatable {
     public let items: [ClassifiedItem]
     public let separatorHealth: SeparatorHealth
     public let toggleVisible: Bool
+    public let windowModel: StatusItemWindowModel
+
+    public init(
+        items: [ClassifiedItem],
+        separatorHealth: SeparatorHealth,
+        toggleVisible: Bool,
+        windowModel: StatusItemWindowModel = .perItem
+    ) {
+        self.items = items
+        self.separatorHealth = separatorHealth
+        self.toggleVisible = toggleVisible
+        self.windowModel = windowModel
+    }
 
     public var swallowedCount: Int {
         items.filter { $0.visibility.isObstructed }.count
@@ -212,8 +246,39 @@ public enum MenuBarLayoutClassifier {
         return LayoutClassification(
             items: items,
             separatorHealth: separatorHealth,
-            toggleVisible: toggleVisible
+            toggleVisible: toggleVisible,
+            windowModel: windowModel(
+                rawItems: rawItems,
+                ownSeparatorFrame: ownSeparatorFrame,
+                ownToggleFrame: ownToggleFrame
+            )
         )
+    }
+
+    /// Pelmet's own divider and toggle always exist and are always visible,
+    /// so on a per-item menu bar the window server reports a window at each
+    /// of their frames (that is why `classify` has to filter them out of the
+    /// count). When it reports neither, the per-item model is gone.
+    ///
+    /// Matched by frame rather than owner PID on purpose: macOS 26 re-parents
+    /// status-item windows to Control Center, so the PID is not Pelmet's even
+    /// where the windows are plainly there.
+    ///
+    /// Both frames have to go missing before this says `merged`. A single
+    /// window absent from one read is the kind of churn the caller's
+    /// two-measurement guard exists for; both absent is structural.
+    static func windowModel(
+        rawItems: [RawStatusWindow],
+        ownSeparatorFrame: CGRect?,
+        ownToggleFrame: CGRect?
+    ) -> StatusItemWindowModel {
+        guard let separator = ownSeparatorFrame, let toggle = ownToggleFrame else {
+            return .unknown
+        }
+        let found = [separator, toggle].contains { own in
+            rawItems.contains { matches(own, $0.frame) }
+        }
+        return found ? .perItem : .merged
     }
 
     // MARK: - Internals

@@ -146,6 +146,102 @@ struct MenuBarLayoutClassifierTests {
         #expect(result.separatorHealth == .swallowed)
     }
 
+    // MARK: - Merged menu bar (macOS 27)
+
+    @Test func testOwnItemsPresentMeansPerItemWindows() {
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [win(1170, 26), win(1198, 38), win(900, 40)],
+            ownSeparatorFrame: bar(1170, 26),
+            ownToggleFrame: bar(1198, 38),
+            isCollapsed: false,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .perItem)
+    }
+
+    @Test func testOwnItemsMissingFromANonEmptyListMeansMerged() {
+        // macOS 27 reports nothing at the status-item window level, but other
+        // windows can still live there (observed: a clipboard-manager panel).
+        // Pelmet's own divider and toggle are always in the bar, so their
+        // absence is the signal, not the list being short.
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [win(300, 254)],
+            ownSeparatorFrame: bar(891, 26),
+            ownToggleFrame: bar(891, 26),
+            isCollapsed: false,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .merged)
+    }
+
+    @Test func testEmptyWindowListWithReadableOwnFramesIsMerged() {
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [],
+            ownSeparatorFrame: bar(891, 26),
+            ownToggleFrame: bar(891, 26),
+            isCollapsed: false,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .merged)
+        #expect(result.swallowedCount == 0)
+    }
+
+    @Test func testOneOwnItemPresentIsEnoughToStayPerItem() {
+        // A single window missing from one read is ordinary churn, which the
+        // monitor's two-measurement guard already covers. Only both going
+        // missing is structural.
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [win(1198, 38)],
+            ownSeparatorFrame: bar(1170, 26),
+            ownToggleFrame: bar(1198, 38),
+            isCollapsed: false,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .perItem)
+    }
+
+    @Test func testCollapsedInflatedSeparatorStillMatchesItsOwnWindow() {
+        // While collapsed the divider is a ~2,700pt spacer. Its window is
+        // still its window, so this must not read as a merged bar.
+        let separator = bar(-1500, 2760)
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [RawStatusWindow(frame: separator), win(1198, 38)],
+            ownSeparatorFrame: separator,
+            ownToggleFrame: bar(1198, 38),
+            isCollapsed: true,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .perItem)
+    }
+
+    @Test func testUnreadableOwnFramesDrawNoConclusion() {
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [win(900, 40)],
+            ownSeparatorFrame: nil,
+            ownToggleFrame: nil,
+            isCollapsed: false,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .unknown)
+    }
+
+    @Test func testWindowModelMatchesByFrameNotOwnerPID() {
+        // macOS 26 re-parents status-item windows to Control Center, so the
+        // owner PID is not Pelmet's even where the windows are plainly there.
+        let controlCenterPID: Int32 = 501
+        let result = MenuBarLayoutClassifier.classify(
+            rawItems: [
+                win(1170, 26, pid: controlCenterPID),
+                win(1198, 38, pid: controlCenterPID),
+            ],
+            ownSeparatorFrame: bar(1170, 26),
+            ownToggleFrame: bar(1198, 38),
+            isCollapsed: false,
+            geometry: geometry
+        )
+        #expect(result.windowModel == .perItem)
+    }
+
     @Test func testToggleUnderNotchReportsNotVisible() {
         let result = MenuBarLayoutClassifier.classify(
             rawItems: [win(900, 40)],

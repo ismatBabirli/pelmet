@@ -9,6 +9,10 @@ final class LayoutStatus: ObservableObject {
     static let shared = LayoutStatus()
 
     @Published var swallowedCount = 0
+    /// False once measurement confirms a merged menu bar (macOS 27), where
+    /// the expanding-spacer collapse moves nothing. SwiftUI surfaces use it
+    /// to stop offering a remedy that cannot work.
+    @Published var canHideIcons = true
     @Published var hasNotchedDisplay: Bool
     @Published var hasMenuBarObstruction: Bool
     @Published var spacingProfile: MenuBarSpacing.Profile
@@ -41,9 +45,17 @@ final class LayoutStatus: ObservableObject {
             }
     }
 
-    func refresh(swallowedCount: Int, shelfEntries: [ShelfEntryModel]) {
+    func refresh(swallowedCount: Int, shelfEntries: [ShelfEntryModel], canHideIcons: Bool) {
         self.swallowedCount = swallowedCount
         self.shelfEntries = shelfEntries
+        self.canHideIcons = canHideIcons
+        refreshObstruction()
+    }
+
+    /// Re-derives display facts alone, for callers that changed an island
+    /// rule rather than the layout: the counts and Shelf rows they would
+    /// otherwise have to pass back unchanged are not theirs to restate.
+    func refreshObstruction() {
         hasNotchedDisplay = NSScreen.screens.contains { $0.safeAreaInsets.top > 0 }
         hasMenuBarObstruction = hasNotchedDisplay
             || SoftwareIslandMonitor.shared.hasEnabledCandidate
