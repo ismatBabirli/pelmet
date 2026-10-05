@@ -58,13 +58,15 @@ jobs:
         run: brew install xcodegen
       - name: Generate Xcode project
         run: xcodegen generate
+      # Generic destination: compile both arm64 and x86_64, so code that only
+      # builds on Apple silicon fails here instead of at release time.
       - name: Build app bundle (unsigned)
         run: |
           xcodebuild build \
             -project Pelmet.xcodeproj \
             -scheme Pelmet \
             -configuration Debug \
-            -destination 'platform=macOS' \
+            -destination 'generic/platform=macOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
       - name: Verify bundled changelog
