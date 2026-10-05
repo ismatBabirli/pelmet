@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Pelmet now runs on Intel Macs. Every earlier release shipped an Apple
+  silicon-only app because the release build compiled just the build machine's
+  architecture. The DMG, the update ZIP and the Homebrew cask now carry a
+  universal binary, and the release fails if any slice is missing
+  ([#50](https://github.com/ismatBabirli/pelmet/issues/50)).
+
 ## [0.8.1] - 2026-09-17
 
 ### Fixed

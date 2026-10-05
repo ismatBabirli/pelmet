@@ -88,13 +88,16 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      # The generic destination builds every architecture in ARCHS. A concrete
+      # 'platform=macOS' destination resolves to the arm64 runner itself and
+      # silently ships an Apple silicon-only app (issue #50).
       - name: Build Release (unsigned)
         run: |
           xcodebuild build \
             -project Pelmet.xcodeproj \
             -scheme Pelmet \
             -configuration Release \
-            -destination 'platform=macOS' \
+            -destination 'generic/platform=macOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
           echo "APP=$PWD/build/Build/Products/Release/Pelmet.app" >> "$GITHUB_ENV"
@@ -122,6 +125,24 @@ jobs:
             echo "SUEnableAutomaticChecks must stay unset so Sparkle asks for consent."
             exit 1
           fi
+
+      # Every Mach-O in the bundle (Pelmet plus Sparkle's helpers) must carry
+      # both slices, or the DMG, ZIP and cask all ship without Intel support.
+      - name: Verify universal binaries
+        run: |
+          FAILED=0
+          while IFS= read -r -d '' BIN; do
+            file -b "$BIN" | grep -q 'Mach-O' || continue
+            BIN_ARCHS="$(lipo -archs "$BIN")"
+            echo "${BIN#"$APP"/}: $BIN_ARCHS"
+            for ARCH in arm64 x86_64; do
+              case " $BIN_ARCHS " in
+                *" $ARCH "*) ;;
+                *) echo "::error::Missing $ARCH slice: ${BIN#"$APP"/}"; FAILED=1 ;;
+              esac
+            done
+          done < <(find "$APP" -type f -perm +111 -print0)
+          exit "$FAILED"
 
       # ---- Dry run stops here: publish the unsigned .app for inspection ----
       - name: Upload unsigned app (dry run)
