@@ -117,5 +117,13 @@
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
       <enclosure url="https://github.com/ismatBabirli/pelmet/releases/download/v0.8.1/Pelmet-0.8.1.zip" sparkle:edSignature="RcTlbJ3q/ulmgeFKUFC6oHjji8c8SiFLPd6Fr+4okAK2E7KvQTl4Vu/j6xzDNi8b9KVkNAXuYxFeOeLVySqZBA==" length="4826864" type="application/octet-stream"/>
     </item>
+    <item>
+      <title>0.8.2</title>
+      <pubDate>Mon, 05 Oct 2026 09:37:39 +0000</pubDate>
+      <sparkle:version>17</sparkle:version>
+      <sparkle:shortVersionString>0.8.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+      <enclosure url="https://github.com/ismatBabirli/pelmet/releases/download/v0.8.2/Pelmet-0.8.2.zip" sparkle:edSignature="52cYIVLHjRrie9o2hZwGwEnJ31ZOCf0BmPXWgBwBSRvdLhmAh4aYCoBPzjv8g6A7x4Z926GDumGWhehm7gJ3Cw==" length="5511277" type="application/octet-stream"/>
+    </item>
   </channel>
 </rss>
