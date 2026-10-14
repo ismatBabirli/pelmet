@@ -3,10 +3,14 @@ import os
 import PelmetCore
 
 /// Observes permission-free pointer movement and emits edge transitions for
-/// the full menu bar band on the display currently hosting Pelmet's toggle.
+/// the menu bar on the display currently hosting Pelmet's toggle. A hover
+/// starts only near Pelmet's icons (`MenuBarHoverRegion.revealBand`) and lasts
+/// anywhere in the full band.
 final class MenuBarHoverMonitor: NSObject {
 
-    typealias Region = (toggleFrame: CGRect, screenFrame: CGRect)
+    /// `statusAreaMinX` is where status items begin on that display: the
+    /// notch's right edge, or nil without a notch.
+    typealias Region = (toggleFrame: CGRect, screenFrame: CGRect, statusAreaMinX: CGFloat?)
 
     private let logger = Logger(
         subsystem: "com.ismatbabirli.Pelmet",
@@ -117,8 +121,15 @@ final class MenuBarHoverMonitor: NSObject {
             enabled: true,
             buttonsDown: NSEvent.pressedMouseButtons != 0,
             point: NSEvent.mouseLocation,
-            toggleFrame: region?.toggleFrame,
-            screenFrame: region?.screenFrame
+            revealBand: MenuBarHoverRegion.revealBand(
+                toggleFrame: region?.toggleFrame,
+                screenFrame: region?.screenFrame,
+                statusAreaMinX: region?.statusAreaMinX
+            ),
+            retainBand: MenuBarHoverRegion.band(
+                toggleFrame: region?.toggleFrame,
+                screenFrame: region?.screenFrame
+            )
         )
         if let transition {
             onTransition?(transition)

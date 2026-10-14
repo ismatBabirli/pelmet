@@ -201,4 +201,73 @@ struct MenuBarHoverPolicyTests {
             autoRehide: true
         ) == .init(cancelRehide: false, reveal: false, scheduleRehide: false))
     }
+
+    // MARK: - Reveal band
+
+    /// Right edge of a 14-inch MacBook Pro's notch.
+    private let notchRightEdge: CGFloat = 848.5
+
+    @Test func testRevealBandStartsAtTheNotchAndEndsAtTheToggle() {
+        #expect(MenuBarHoverRegion.revealBand(
+            toggleFrame: toggle,
+            screenFrame: screen,
+            statusAreaMinX: notchRightEdge
+        ) == CGRect(x: 848.5, y: 949, width: 613.5, height: 33))
+    }
+
+    @Test func testRevealBandStartsMidScreenWithoutANotch() {
+        #expect(MenuBarHoverRegion.revealBand(
+            toggleFrame: toggle,
+            screenFrame: screen,
+            statusAreaMinX: nil
+        ) == CGRect(x: 756, y: 949, width: 706, height: 33))
+    }
+
+    @Test func testRevealBandFollowsAToggleLeftOfItsStart() {
+        let crowdedToggle = CGRect(x: 600, y: 949, width: 32, height: 33)
+
+        #expect(MenuBarHoverRegion.revealBand(
+            toggleFrame: crowdedToggle,
+            screenFrame: screen,
+            statusAreaMinX: notchRightEdge
+        ) == CGRect(x: 600, y: 949, width: 32, height: 33))
+    }
+
+    @Test func testRevealBandNeedsAValidToggle() {
+        #expect(MenuBarHoverRegion.revealBand(
+            toggleFrame: nil,
+            screenFrame: screen,
+            statusAreaMinX: notchRightEdge
+        ) == nil)
+    }
+
+    @Test func testAppMenusDoNotStartAHoverButKeepARevealedOne() {
+        var tracker = MenuBarHoverTracker()
+        let reveal = MenuBarHoverRegion.revealBand(
+            toggleFrame: toggle,
+            screenFrame: screen,
+            statusAreaMinX: notchRightEdge
+        )
+        let retain = MenuBarHoverRegion.band(toggleFrame: toggle, screenFrame: screen)
+        func move(to point: CGPoint) -> MenuBarHoverTransition? {
+            tracker.update(
+                enabled: true,
+                buttonsDown: false,
+                point: point,
+                revealBand: reveal,
+                retainBand: retain
+            )
+        }
+
+        // Over File and Edit, left of the notch: nothing.
+        #expect(move(to: CGPoint(x: 300, y: 960)) == nil)
+        #expect(!tracker.isPointerInside)
+        // Next to the status icons: the hover starts.
+        #expect(move(to: CGPoint(x: 1000, y: 960)) == .entered)
+        // Back across the bar to the app menus: still the same hover.
+        #expect(move(to: CGPoint(x: 300, y: 960)) == nil)
+        #expect(tracker.isPointerInside)
+        // Out of the bar entirely: it ends.
+        #expect(move(to: CGPoint(x: 300, y: 900)) == .exited)
+    }
 }

@@ -52,6 +52,16 @@ enum WindowListSource {
         }
     }
 
+    /// True while any app has a menu open: an on-screen window at the pop-up
+    /// menu level (`NSWindow.Level.popUpMenu`, 101). Level metadata only.
+    static func isAnyMenuOpen() -> Bool {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]]
+        else { return false }
+        return list.contains { info in
+            (info[kCGWindowLayer as String] as? Int) == Int(CGWindowLevelForKey(.popUpMenuWindow))
+        }
+    }
+
     /// Top-center overlay candidates using the same permission-free metadata
     /// as status-item discovery. App identity is resolved locally from the
     /// owning PID and never leaves the Mac.

@@ -158,6 +158,32 @@ nothing.
     -string garbage`, relaunch → falls back to ⌥⌘B with one os_log line and no
     crash, and the bad value is left in place for diagnosis.
 
+## Reveal and rehide gestures
+
+All permission-free and all under `swift run`. Collapse first, with a few icons
+left of ╱. The reveal stretch runs from the notch's right edge (or the middle
+of a display without a notch) to the chevron.
+
+G1. **Hover starts near the icons only.** Turn on Show hidden items on hover.
+    Move the pointer along the bar over File and Edit: nothing reveals. Move it
+    right of the notch: the icons reveal. Slide back over the app menus: they
+    stay shown until the pointer leaves the bar.
+G2. **Scroll.** Turn on scrolling. Scroll on the bar right of the notch: the
+    icons reveal once per swipe, and the timer hides them as usual. Scrolling
+    over the app menus or in a window does nothing.
+G3. **Empty-space click.** Turn on clicking. Click empty bar space right of the
+    notch: the icons reveal. Click another app's icon there: only its menu
+    opens, nothing reveals. Click the chevron: one ordinary toggle.
+G4. **Outside click.** Turn on Re-hide when clicking outside the menu bar.
+    Reveal, then click the desktop: the icons hide. Reveal, click a revealed
+    icon, choose a menu item: the menu works and nothing hides on that click.
+G5. **Pelmet windows hold the reveal.** Reveal, open Settings, click inside
+    it and on the desktop around it: nothing hides while Settings is open.
+G6. **Timer and click together.** With both on, an outside click hides at
+    once and the timer never fires afterwards on an already-collapsed bar.
+G7. **All off is unchanged.** With the three new settings off, no scroll or
+    click near the bar reveals anything, and hover behaves as in G1.
+
 ## Merged menu bar (macOS 27)
 
 macOS 27 composites the whole menu bar into a single system window: nothing is

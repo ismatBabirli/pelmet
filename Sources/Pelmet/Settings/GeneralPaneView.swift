@@ -16,6 +16,9 @@ struct GeneralPaneView: View {
     @AppStorage(Preferences.Keys.autoRehide) private var autoRehide = true
     @AppStorage(Preferences.Keys.rehideDelay) private var rehideDelay = 10.0
     @AppStorage(Preferences.Keys.showOnHover) private var showOnHover = false
+    @AppStorage(Preferences.Keys.showOnScroll) private var showOnScroll = false
+    @AppStorage(Preferences.Keys.showOnBarClick) private var showOnBarClick = false
+    @AppStorage(Preferences.Keys.hideOnOutsideClick) private var hideOnOutsideClick = false
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @State private var launchAtLoginError: String?
     @State private var autoCheckUpdates = UpdaterController.shared.automaticallyChecksForUpdates
@@ -47,7 +50,15 @@ struct GeneralPaneView: View {
                 }
 
                 Toggle("Show hidden items on hover", isOn: $showOnHover)
-                Text("Move the pointer into the menu bar to reveal managed items.")
+                Text("Move the pointer into the menu bar near Pelmet's icons to reveal managed "
+                    + "items. Reaching for the app menus on the left doesn't trigger it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Toggle("Show hidden items when scrolling on the menu bar", isOn: $showOnScroll)
+                Toggle("Show hidden items when clicking empty menu bar space", isOn: $showOnBarClick)
+                Text("Both work near Pelmet's icons, the same stretch as hover.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -63,6 +74,13 @@ struct GeneralPaneView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                Toggle("Re-hide when clicking outside the menu bar", isOn: $hideOnOutsideClick)
+                Text("Works with or without the timer. A click that chooses from an open menu "
+                    + "doesn't count.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 // Binding with a setter side effect instead of .onChange —
                 // the non-deprecated onChange(of:initial:_:) needs macOS 14.
