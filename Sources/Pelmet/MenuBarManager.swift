@@ -79,6 +79,23 @@ final class MenuBarManager: NSObject {
     private let hoverMonitor = MenuBarHoverMonitor()
     private var lastShowOnHoverPreference = Preferences.showOnHover
     private var lastAutoRehidePreference = Preferences.autoRehide
+    private let gestureMonitor = MenuBarGestureMonitor()
+    private var lastGesturePreferences = GesturePreferences.current
+
+    /// Scroll and click gestures, each its own opt-in setting.
+    private struct GesturePreferences: Equatable {
+        let scroll: Bool
+        let barClick: Bool
+        let outsideClick: Bool
+
+        static var current: GesturePreferences {
+            GesturePreferences(
+                scroll: Preferences.showOnScroll,
+                barClick: Preferences.showOnBarClick,
+                outsideClick: Preferences.hideOnOutsideClick
+            )
+        }
+    }
 
     private var toggleItem: NSStatusItem!
     private var separatorItem: NSStatusItem!
@@ -186,6 +203,7 @@ final class MenuBarManager: NSObject {
         lastShowOnHoverPreference = Preferences.showOnHover
         lastAutoRehidePreference = Preferences.autoRehide
         configureHoverMonitoring()
+        configureGestureMonitoring()
 
         StatusItemActivationEngine.shared.start()
         // The engine's directory changes on its own schedule (grant lands,
@@ -203,6 +221,7 @@ final class MenuBarManager: NSObject {
         cancelRehide()
         onboardingFallbackTimer?.invalidate()
         hoverMonitor.stop()
+        gestureMonitor.stop()
     }
 
     /// Sparkle's scheduled update UI is deliberately replaced by a persistent
@@ -418,7 +437,43 @@ final class MenuBarManager: NSObject {
               window.isVisible,
               let screen = window.screen
         else { return nil }
-        return (toggleFrame: window.frame, screenFrame: screen.frame)
+        return (
+            toggleFrame: window.frame,
+            screenFrame: screen.frame,
+            statusAreaMinX: screen.auxiliaryTopRightArea?.minX
+        )
+    }
+
+    // MARK: - Scroll and click gestures
+
+    private func configureGestureMonitoring() {
+        let preferences = GesturePreferences.current
+        lastGesturePreferences = preferences
+        gestureMonitor.contextProvider = { [weak self] in self?.gestureContext }
+        // A gesture is a deliberate reveal, like a click on the chevron, so it
+        // persists and starts the auto-rehide timer. Hover does neither.
+        gestureMonitor.onReveal = { [weak self] in self?.expand() }
+        gestureMonitor.onHide = { [weak self] in self?.collapse() }
+        gestureMonitor.configure(
+            scroll: preferences.scroll,
+            barClick: preferences.barClick,
+            outsideClick: preferences.outsideClick
+        )
+    }
+
+    private var gestureContext: MenuBarGestureMonitor.Context {
+        let region = currentHoverRegion
+        return MenuBarGestureMonitor.Context(
+            isCollapsed: isCollapsed,
+            toggleFrame: region?.toggleFrame,
+            revealBand: MenuBarHoverRegion.revealBand(
+                toggleFrame: region?.toggleFrame,
+                screenFrame: region?.screenFrame,
+                statusAreaMinX: region?.statusAreaMinX
+            ),
+            ownItemFrames: [toggleItem, separatorItem].compactMap { $0?.button?.window?.frame },
+            canHitTestItems: menuBarWindowModel != .merged
+        )
     }
 
     private func handleHoverTransition(_ transition: MenuBarHoverTransition) {
@@ -445,6 +500,10 @@ final class MenuBarManager: NSObject {
         if showOnHover != lastShowOnHoverPreference {
             lastShowOnHoverPreference = showOnHover
             configureHoverMonitoring()
+        }
+
+        if GesturePreferences.current != lastGesturePreferences {
+            configureGestureMonitoring()
         }
 
         let autoRehide = Preferences.autoRehide

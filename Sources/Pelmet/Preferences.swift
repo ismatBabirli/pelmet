@@ -10,6 +10,9 @@ enum Preferences {
         static let autoRehide = "autoRehide"
         static let rehideDelay = "rehideDelay"
         static let showOnHover = "showOnHover"
+        static let showOnScroll = "showOnScroll"
+        static let showOnBarClick = "showOnBarClick"
+        static let hideOnOutsideClick = "hideOnOutsideClick"
         static let isCollapsed = "isCollapsed"
         static let showSwallowedCount = "showSwallowedCount"
         static let didShowDividerTip = "didShowDividerTip"
@@ -68,9 +71,26 @@ enum Preferences {
     }
 
     /// Opt-in accelerator that reveals managed items when the pointer enters
-    /// the menu bar. The click and hotkey controls remain available either way.
+    /// the menu bar near Pelmet's icons. The click and hotkey controls remain
+    /// available either way.
     static var showOnHover: Bool {
         UserDefaults.standard.bool(forKey: Keys.showOnHover)
+    }
+
+    /// Opt-in: a scroll on the menu bar near Pelmet's icons reveals them.
+    static var showOnScroll: Bool {
+        UserDefaults.standard.bool(forKey: Keys.showOnScroll)
+    }
+
+    /// Opt-in: a click on empty menu bar space near Pelmet's icons reveals them.
+    static var showOnBarClick: Bool {
+        UserDefaults.standard.bool(forKey: Keys.showOnBarClick)
+    }
+
+    /// Opt-in: a click outside the menu bar hides revealed items again, on top
+    /// of (or instead of) the auto-rehide timer.
+    static var hideOnOutsideClick: Bool {
+        UserDefaults.standard.bool(forKey: Keys.hideOnOutsideClick)
     }
 
     /// Seconds before revealed items hide again.

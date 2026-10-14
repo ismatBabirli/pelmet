@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Show hidden icons on a scroll** or **on a click on empty menu bar space**,
+  each an opt-in setting in General. Both work near Pelmet's icons and need no
+  permission.
+- **Re-hide on a click outside the menu bar**, an opt-in setting that works with
+  or without the auto-rehide timer. A click that chooses from an open menu
+  doesn't count.
+
 ### Changed
 
+- Show on hover now starts only when the pointer reaches the menu bar near
+  Pelmet's icons (right of the notch, or the right half of a display without
+  one), so reaching for an app's menus no longer reveals hidden icons. Once
+  they are shown, the whole menu bar keeps them shown.
 - On macOS 27, the chevron menu, the "can't hide icons" popover and Make Room
   no longer say that no third-party app can hide menu bar icons there. That
   was wrong. macOS 27 ignores Pelmet's divider because it grows past a

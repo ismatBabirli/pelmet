@@ -98,7 +98,9 @@ that you review and submit yourself.
 |---|---|
 | Show/hide managed icons | Click the ‹ / › toggle, or press **⌥⌘B** |
 | Change either shortcut | Settings → General → **Shortcuts**: click one and type the new keys (⌫ removes it) |
-| Reveal managed icons on hover | Enable **Show hidden items on hover** in Settings, then move the pointer into the menu bar |
+| Reveal managed icons on hover | Enable **Show hidden items on hover** in Settings, then move the pointer into the menu bar near Pelmet's icons |
+| Reveal with a scroll or a click | Enable **Show hidden items when scrolling** or **when clicking empty menu bar space** in Settings |
+| Re-hide on a click elsewhere | Enable **Re-hide when clicking outside the menu bar** in Settings |
 | Keep an icon always visible | ⌘-drag it to the **right** of the ╱ divider |
 | See why icons are missing | Hover or right-click the toggle when it shows **+N** |
 | Lost the divider? | Right-click the toggle → Reset Divider Position |
@@ -183,7 +185,8 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 - [x] **The Shelf** — a blurred, rounded panel below the notch listing the icons macOS hid, opened by clicking the count (or ⌥⌘N by default). Rows show each item's app icon and name — **never a screen capture**, so no Screen Recording permission and no purple recording dot.
 - [x] **Pointer-safe one-click access** — an *opt-in* Accessibility toggle that opens compatible hidden items using actions they advertise to macOS (and identifies them on macOS 26 Tahoe). It never posts mouse events or moves the pointer. Off by default; everything else works without it.
-- [x] Show on hover: reveal when the pointer touches the menu bar (opt-in)
+- [x] Show on hover: reveal when the pointer reaches the menu bar near Pelmet's icons (opt-in)
+- [x] Show on scroll or on a click on empty menu bar space, and re-hide on a click outside it (each opt-in, no permission)
 - [ ] Per-item rules and presentation mode (e.g. "always hide" or "hide sensitive items")
 - [x] **Custom shortcut recorder** — record your own combination for hide-and-show and for the Shelf, or clear either one. Pelmet refuses combinations macOS owns (including ones you remapped) and reports when another app already claimed one. Labels follow your keyboard layout.
 - [x] **Notarized releases + Homebrew cask** — a signed, notarized `.dmg` on every tagged release; `brew install --cask ismatBabirli/pelmet/pelmet`

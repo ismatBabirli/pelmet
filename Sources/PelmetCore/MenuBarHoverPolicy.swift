@@ -31,6 +31,28 @@ public enum MenuBarHoverRegion {
         )
     }
 
+    /// The stretch of that band that starts a reveal: from where status items
+    /// begin (the notch's right edge, or the middle of a display without one)
+    /// to the toggle's right edge. App menus on the left stay out of it, so
+    /// reaching for File or Edit never reveals anything.
+    public static func revealBand(
+        toggleFrame: CGRect?,
+        screenFrame: CGRect?,
+        statusAreaMinX: CGFloat?
+    ) -> CGRect? {
+        guard let band = band(toggleFrame: toggleFrame, screenFrame: screenFrame),
+              let toggleFrame
+        else { return nil }
+
+        // A toggle pushed left of that point (a very crowded bar) still
+        // reveals from its own left edge.
+        let start = min(statusAreaMinX ?? band.midX, toggleFrame.minX)
+        let minX = max(band.minX, start)
+        let maxX = min(band.maxX, toggleFrame.maxX)
+        guard maxX > minX else { return nil }
+        return CGRect(x: minX, y: band.minY, width: maxX - minX, height: band.height)
+    }
+
     public static func contains(
         _ point: CGPoint,
         toggleFrame: CGRect?,
@@ -39,7 +61,12 @@ public enum MenuBarHoverRegion {
         guard let band = band(toggleFrame: toggleFrame, screenFrame: screenFrame) else {
             return false
         }
-        return point.x >= band.minX && point.x < band.maxX
+        return contains(point, in: band)
+    }
+
+    /// Half-open on the far edges, so adjacent bands never both claim a point.
+    public static func contains(_ point: CGPoint, in band: CGRect) -> Bool {
+        point.x >= band.minX && point.x < band.maxX
             && point.y >= band.minY && point.y < band.maxY
     }
 }
@@ -51,6 +78,7 @@ public struct MenuBarHoverTracker {
 
     public init() {}
 
+    /// One region for entering and staying: the full menu bar band.
     public mutating func update(
         enabled: Bool,
         buttonsDown: Bool,
@@ -58,17 +86,34 @@ public struct MenuBarHoverTracker {
         toggleFrame: CGRect?,
         screenFrame: CGRect?
     ) -> MenuBarHoverTransition? {
+        let band = MenuBarHoverRegion.band(toggleFrame: toggleFrame, screenFrame: screenFrame)
+        return update(
+            enabled: enabled,
+            buttonsDown: buttonsDown,
+            point: point,
+            revealBand: band,
+            retainBand: band
+        )
+    }
+
+    /// Two regions: the pointer has to enter `revealBand` to count as inside,
+    /// then stays inside anywhere in `retainBand`. Moving across the revealed
+    /// icons or the rest of the bar does not end the hover.
+    public mutating func update(
+        enabled: Bool,
+        buttonsDown: Bool,
+        point: CGPoint,
+        revealBand: CGRect?,
+        retainBand: CGRect?
+    ) -> MenuBarHoverTransition? {
         guard enabled else {
             isPointerInside = false
             return nil
         }
         guard !buttonsDown else { return nil }
 
-        let isInside = MenuBarHoverRegion.contains(
-            point,
-            toggleFrame: toggleFrame,
-            screenFrame: screenFrame
-        )
+        let region = isPointerInside ? retainBand : revealBand
+        let isInside = region.map { MenuBarHoverRegion.contains(point, in: $0) } ?? false
         guard isInside != isPointerInside else { return nil }
         isPointerInside = isInside
         return isInside ? .entered : .exited
