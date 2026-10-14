@@ -25,9 +25,14 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
     /// present and auto-rescued — so a divider born behind the notch can no
     /// longer stall onboarding. The divider spotlight is a second, opportunistic
     /// tip that waits for the ╱ to actually surface and blocks nothing.
+    /// `dividerStartsAtLeft`: on macOS 27 the ╱ starts at the left end with
+    /// every icon visible to its right, so the tips teach dragging icons left
+    /// to hide them. Elsewhere it starts beside the clock with every icon to
+    /// its left, so they teach dragging the keepers right.
     func maybeShowLaunchTips(
         separator: NSStatusItem, toggle: NSStatusItem,
-        separatorVisible: Bool, toggleVisible: Bool
+        separatorVisible: Bool, toggleVisible: Bool,
+        dividerStartsAtLeft: Bool
     ) {
         guard activePopover == nil else { return }
 
@@ -39,12 +44,14 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
             // the user has cleared it.
             let toggleHint = HotkeyManager.shared.bindings.toggle
                 .map { " (or press \(HotkeyDisplay.string(for: $0)))" } ?? ""
+            let arrange = dividerStartsAtLeft
+                ? "⌘-drag the icons you rarely use to the divider's left."
+                : "⌘-drag the icons you always want visible to the divider's right, next to the clock."
             if show(
                 title: "Welcome to Pelmet",
                 message: "This ‹/› chevron hides everything to the left of the ╱ divider. "
                     + "Click it\(toggleHint) to clear the clutter, click again to bring it back. "
-                    + "⌘-drag the icons you always want visible to the divider's right, next to the "
-                    + "clock. Revealed icons re-hide after \(delay) seconds; change that in Settings.",
+                    + "\(arrange) Revealed icons re-hide after \(delay) seconds; change that in Settings.",
                 buttonTitle: "Got It",
                 on: button
             ) {
@@ -59,8 +66,11 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
             guard separatorVisible, let button = separator.button else { return }
             if show(
                 title: "This is your divider",
-                message: "Pelmet hides everything to the left of this ╱. ⌘-drag icons to its "
-                    + "right to keep them next to the clock, always visible.",
+                message: dividerStartsAtLeft
+                    ? "Pelmet hides everything to the left of this ╱. ⌘-drag the icons you "
+                        + "rarely use to its left; everything to its right stays visible."
+                    : "Pelmet hides everything to the left of this ╱. ⌘-drag icons to its "
+                        + "right to keep them next to the clock, always visible.",
                 buttonTitle: "Got It",
                 on: button
             ) {

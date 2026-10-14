@@ -47,7 +47,7 @@ enum Preferences {
         static let supportNudgeShowCount = "supportNudgeShowCount"
         static let supportNudgeDismissed = "supportNudgeDismissed"
         static let softwareIslandRules = "softwareIslandRules"
-        static let experimentalOverflowCollapse = "experimentalOverflowCollapse"
+        static let overflowCollapse = "overflowCollapse"
 
         /// Which key holds an action's shortcut. Two keys rather than one blob, so
         /// a corrupt value costs one shortcut instead of both.
@@ -407,13 +407,16 @@ enum Preferences {
         set { UserDefaults.standard.set(newValue, forKey: Keys.hasEverManagedItems) }
     }
 
-    /// Prototype switch for collapsing into macOS 27's « overflow. No UI yet:
-    /// `defaults write com.ismatbabirli.Pelmet experimentalOverflowCollapse
-    /// -bool YES`, or `PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE=1` for `swift run`.
-    /// Read once at launch, because it decides which status items exist.
-    static var experimentalOverflowCollapse: Bool {
-        ProcessInfo.processInfo.environment["PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE"] == "1"
-            || UserDefaults.standard.bool(forKey: Keys.experimentalOverflowCollapse)
+    /// Collapsing into macOS 27's « overflow, on unless switched off. No UI:
+    /// `defaults write com.ismatbabirli.Pelmet overflowCollapse -bool NO`, or
+    /// `PELMET_DISABLE_OVERFLOW_COLLAPSE=1` for `swift run`, brings back the
+    /// "can't hide icons here" behavior. Read once at launch, because it
+    /// decides which status items exist.
+    static var overflowCollapseEnabled: Bool {
+        if ProcessInfo.processInfo.environment["PELMET_DISABLE_OVERFLOW_COLLAPSE"] == "1" {
+            return false
+        }
+        return UserDefaults.standard.object(forKey: Keys.overflowCollapse) as? Bool ?? true
     }
 
     static func resetOnboardingFlags() {

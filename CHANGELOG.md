@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Hiding icons works on macOS 27**, still with no permissions. macOS 27
+  ignores a menu bar item as wide as Pelmet's old divider, so Pelmet now keeps
+  the ╱ just under the size macOS accepts and lets the bar run out of room:
+  everything left of ╱ moves into macOS's own « menu at the left of the bar,
+  where it stays one click away. After this update the ╱ starts at the left end
+  of your icons with nothing hidden, so ⌘-drag the icons you rarely use to its
+  left, then collapse. To switch it off, run
+  `defaults write com.ismatbabirli.Pelmet overflowCollapse -bool NO` and
+  relaunch.
+
+### Changed
+
+- On macOS 27, the first-run tips explain dragging icons to the left of ╱,
+  since that is where it starts there.
+
 ## [0.9.0] - 2026-10-14
 
 ### Added

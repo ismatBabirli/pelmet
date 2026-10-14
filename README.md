@@ -62,6 +62,12 @@ Pelmet places two items in your menu bar:
   past the screen edge. Expand and they slide back.
 - This is the same battle-tested technique used by Hidden Bar and Dozer. It
   needs **no** Screen Recording or Accessibility permission.
+- **macOS 27** discards a status item that wide, so there Pelmet keeps the ╱ and
+  a few invisible spacers just under the size macOS accepts. The bar then runs
+  out of room from the left, and macOS moves everything left of ╱ into its own
+  « menu, where hidden icons stay one click away. Still no permissions. On the
+  first launch the ╱ sits at the left end with nothing hidden: ⌘-drag the icons
+  you rarely use to its left.
 - If the expanded icons don't all fit beside the notch, the toggle shows a
   compact count above its chevron instead of letting them vanish without a trace.
   Right-click it for ways to make room. Detection uses only public
@@ -153,14 +159,14 @@ open Pelmet.xcodeproj   # then build & run with ⌘R
 
 ### Troubleshooting
 
-- **Clicking the chevron doesn't hide anything (macOS 27).** macOS 27 draws the
-  whole menu bar as a single composited window and discards a status item once
-  it grows past a per-display size limit. Pelmet's ╱ divider grows far past
-  that limit to push icons off the screen edge, so macOS ignores it and nothing
-  moves. Pelmet detects this and tells you rather than flipping the chevron
-  over a menu bar that never changed. A way to hide icons on macOS 27 without
-  any permission is in testing. Until it ships, right-click the chevron for the
-  remaining ways to free up menu bar space.
+- **Collapsing hides nothing (macOS 27).** On macOS 27 the ╱ divider starts at
+  the left end of your icons, so nothing is left of it until you ⌘-drag icons
+  there. Hidden icons go into macOS's « menu at the left of the bar, not off
+  screen. If an icon you put left of ╱ still shows on a wide external display,
+  move it further left. Pelmet 0.9 and earlier could not hide icons on macOS 27
+  at all; update to 0.10 or later. To go back to that behavior, run
+  `defaults write com.ismatbabirli.Pelmet overflowCollapse -bool NO` and
+  relaunch.
 - **Nothing appeared in the menu bar.** Pelmet's toggle and divider are
   seeded right next to the clock, the last spot macOS swallows, so this
   should be rare. If your bar is packed edge to edge, quit another menu bar

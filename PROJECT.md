@@ -113,9 +113,11 @@ gracefully:
 > length reaches a per-display limit (about 0.79 of the area right of the
 > notch, half the width elsewhere), and Pelmet's spacer is far past it. Below
 > the limit the bar overflows from the left into the system's « menu, which
-> hides icons with no permissions at all. That collapse is being prototyped
-> behind a flag (#52). The Shelf's audience until it ships is the large
-> Sequoia/Tahoe installed base, which gets nothing native.
+> hides icons with no permissions at all. That collapse shipped on by default
+> on macOS 27 in 0.10.0 (#52), with spacers left of the divider so it fails
+> open. Coverage detection and the Shelf remain blind there without
+> Accessibility, so the Shelf's audience is still the large Sequoia/Tahoe
+> installed base, which gets nothing native.
 
 ### ⚡ Phase 3 — Actionable Power Features
 
