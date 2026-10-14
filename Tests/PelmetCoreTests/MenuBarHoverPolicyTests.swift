@@ -270,4 +270,39 @@ struct MenuBarHoverPolicyTests {
         // Out of the bar entirely: it ends.
         #expect(move(to: CGPoint(x: 300, y: 900)) == .exited)
     }
+
+    @Test func testARevealedBarCountsAPointerAlreadyOverTheAppMenus() {
+        var tracker = MenuBarHoverTracker()
+        let reveal = MenuBarHoverRegion.revealBand(
+            toggleFrame: toggle,
+            screenFrame: screen,
+            statusAreaMinX: notchRightEdge
+        )
+        let retain = MenuBarHoverRegion.band(toggleFrame: toggle, screenFrame: screen)
+        let overFile = CGPoint(x: 300, y: 960)
+        func check(revealed: Bool, at point: CGPoint = overFile) -> MenuBarHoverTransition? {
+            tracker.update(
+                enabled: true,
+                buttonsDown: false,
+                point: point,
+                revealBand: reveal,
+                retainBand: retain,
+                isRevealed: revealed
+            )
+        }
+
+        // Collapsed, resting over File: not a hover.
+        #expect(check(revealed: false) == nil)
+        // The shortcut reveals with the pointer still there: now it counts,
+        // so the entry cancels the rehide timer instead of letting it run.
+        #expect(check(revealed: true) == .entered)
+        #expect(tracker.isPointerInside)
+        #expect(MenuBarHoverPolicy.decide(
+            transition: .entered,
+            isCollapsed: false,
+            autoRehide: true
+        ).cancelRehide)
+        // Leaving the bar still ends it, which starts the timer as before.
+        #expect(check(revealed: true, at: CGPoint(x: 300, y: 900)) == .exited)
+    }
 }

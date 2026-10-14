@@ -9,8 +9,14 @@ import PelmetCore
 final class MenuBarHoverMonitor: NSObject {
 
     /// `statusAreaMinX` is where status items begin on that display: the
-    /// notch's right edge, or nil without a notch.
-    typealias Region = (toggleFrame: CGRect, screenFrame: CGRect, statusAreaMinX: CGFloat?)
+    /// notch's right edge, or nil without a notch. `isRevealed` is true while
+    /// the icons are shown, which widens the trigger to the full band.
+    typealias Region = (
+        toggleFrame: CGRect,
+        screenFrame: CGRect,
+        statusAreaMinX: CGFloat?,
+        isRevealed: Bool
+    )
 
     private let logger = Logger(
         subsystem: "com.ismatbabirli.Pelmet",
@@ -99,6 +105,14 @@ final class MenuBarHoverMonitor: NSObject {
         onTransition = nil
     }
 
+    /// Re-reads the pointer without waiting for it to move. Call after the
+    /// collapse state changes: a pointer that rests over the app menus while
+    /// the shortcut reveals the icons has to count as inside at once, or the
+    /// rehide timer starts under it.
+    func refresh() {
+        evaluatePointer()
+    }
+
     @objc private func mouseEntered(_ event: NSEvent) {
         evaluatePointer()
     }
@@ -129,7 +143,8 @@ final class MenuBarHoverMonitor: NSObject {
             retainBand: MenuBarHoverRegion.band(
                 toggleFrame: region?.toggleFrame,
                 screenFrame: region?.screenFrame
-            )
+            ),
+            isRevealed: region?.isRevealed ?? false
         )
         if let transition {
             onTransition?(transition)
