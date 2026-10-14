@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-14
+
 ### Added
 
 - **Hiding icons works on macOS 27**, still with no permissions. macOS 27
@@ -312,7 +314,8 @@ First public release — the working MVP.
 - Requires **macOS 13 Ventura** or later.
 - The core hide/show experience needs **zero special permissions**.
 
-[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/ismatBabirli/pelmet/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/ismatBabirli/pelmet/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/ismatBabirli/pelmet/compare/v0.8.2...v0.9.0
 [0.8.2]: https://github.com/ismatBabirli/pelmet/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/ismatBabirli/pelmet/compare/v0.8.0...v0.8.1
