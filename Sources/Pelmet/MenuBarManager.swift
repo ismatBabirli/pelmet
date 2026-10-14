@@ -334,6 +334,9 @@ final class MenuBarManager: NSObject {
         applyExpandedLengths()
         separatorItem.button?.image = separatorImage()
         updateToggleIcon()
+        // Before the timer: a pointer already resting anywhere in the bar
+        // (the shortcut can reveal under it) has to hold the reveal.
+        hoverMonitor.refresh()
         if scheduleRehide { scheduleRehideIfNeeded() }
         NotchLayoutMonitor.shared.requestMeasurement(reason: .expandSettled)
     }
@@ -440,7 +443,8 @@ final class MenuBarManager: NSObject {
         return (
             toggleFrame: window.frame,
             screenFrame: screen.frame,
-            statusAreaMinX: screen.auxiliaryTopRightArea?.minX
+            statusAreaMinX: screen.auxiliaryTopRightArea?.minX,
+            isRevealed: !isCollapsed
         )
     }
 

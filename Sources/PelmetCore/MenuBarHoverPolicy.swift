@@ -99,12 +99,17 @@ public struct MenuBarHoverTracker {
     /// Two regions: the pointer has to enter `revealBand` to count as inside,
     /// then stays inside anywhere in `retainBand`. Moving across the revealed
     /// icons or the rest of the bar does not end the hover.
+    ///
+    /// `isRevealed` says the icons are already shown, by any route (hover, a
+    /// click, the shortcut). Then the whole `retainBand` counts from the
+    /// start, so a pointer resting over the app menus holds the reveal too.
     public mutating func update(
         enabled: Bool,
         buttonsDown: Bool,
         point: CGPoint,
         revealBand: CGRect?,
-        retainBand: CGRect?
+        retainBand: CGRect?,
+        isRevealed: Bool = false
     ) -> MenuBarHoverTransition? {
         guard enabled else {
             isPointerInside = false
@@ -112,7 +117,7 @@ public struct MenuBarHoverTracker {
         }
         guard !buttonsDown else { return nil }
 
-        let region = isPointerInside ? retainBand : revealBand
+        let region = isPointerInside || isRevealed ? retainBand : revealBand
         let isInside = region.map { MenuBarHoverRegion.contains(point, in: $0) } ?? false
         guard isInside != isPointerInside else { return nil }
         isPointerInside = isInside
