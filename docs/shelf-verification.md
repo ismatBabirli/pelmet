@@ -190,3 +190,35 @@ collapse working, which is the regression half of this section.
 48. **Make Room is honest.** Right-click → Make Room… leads with "Hiding icons is
     unavailable here" instead of the ⌘-drag remedy. The spacing, Control Center
     and quit-apps remedies are still listed.
+
+## Overflow collapse on macOS 27 (experimental)
+
+Off by default. `defaults write com.ismatbabirli.Pelmet experimentalOverflowCollapse
+-bool YES` and relaunch (or `PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE=1 swift run`).
+macOS 27 discards a status item once its length reaches a per-display limit, so
+this collapse keeps the divider and up to six invisible spacers under that limit
+and lets the bar overflow into the system's « menu. Pelmet cannot see the result
+without Accessibility, so these checks are visual. `log stream --predicate
+'process == "MenuBarAgent"' --info | grep overflow` shows
+`MenuBar.overflow.indicatorShown` each time the « appears.
+
+49. **First launch places the block.** The ╱ divider appears at the LEFT end of
+    the status icons (a fresh name always lands there on macOS 27), with nothing
+    to its left. ⌘-drag two or three icons to its left.
+50. **Collapse hides them.** Click the chevron. The icons left of ╱ move behind
+    the « and ╱ goes with them. Everything right of ╱, the chevron, and the
+    clock stay put. Open the «: the hidden icons are listed and work. Note any
+    blank rows (the spacers).
+51. **Expand restores the order.** Click the chevron again. The hidden icons come
+    back in the order they had before, and nothing else moved.
+52. **Just right of ╱.** ⌘-drag an icon so it sits immediately right of ╱, then
+    collapse. It must stay visible. If it hides, it landed between ╱ and the
+    invisible spacers.
+53. **Relaunch keeps the block.** Quit and relaunch: ╱ is where you left it and
+    the icons left of it are still the ones that hide.
+54. **External display.** Connect one. Collapse: the same icons hide on both
+    displays' bars (one length applies to all of them). Disconnect while
+    collapsed: nothing reappears and the « stays usable.
+55. **Flag off is unchanged.** Delete the key and relaunch. Steps 43 to 48 hold
+    again, and on macOS 26 and earlier the ordinary collapse is untouched with
+    the flag on or off.
