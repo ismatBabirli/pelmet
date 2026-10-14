@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- On macOS 27, the chevron menu, the "can't hide icons" popover and Make Room
+  no longer say that no third-party app can hide menu bar icons there. That
+  was wrong. macOS 27 ignores Pelmet's divider because it grows past a
+  per-display size limit, and other ways of hiding icons still work there.
+  Pelmet itself still can't hide icons on macOS 27 in this release.
+
 ## [0.8.2] - 2026-10-05
 
 ### Fixed

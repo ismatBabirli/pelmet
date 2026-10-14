@@ -99,9 +99,9 @@ final class OnboardingController: NSObject, NSPopoverDelegate {
         guard activePopover == nil, let button = toggle.button else { return }
         _ = show(
             title: "Pelmet can't hide icons here",
-            message: "This version of macOS draws the whole menu bar as a single piece. "
-                + "The divider no longer pushes anything past the screen edge, and no "
-                + "third-party app can hide what's in the bar. "
+            message: "This version of macOS draws the whole menu bar as a single piece, "
+                + "and it ignores Pelmet's divider at the size Pelmet needs to push "
+                + "icons past the screen edge. "
                 + "Pelmet leaves your icons where they are rather than flipping the "
                 + "chevron over a menu bar that never changed.",
             buttonTitle: "OK",

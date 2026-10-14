@@ -814,7 +814,7 @@ final class MenuBarManager: NSObject {
             hint.isEnabled = false
             hint.attributedTitle = NSAttributedString(
                 string: collapseIsUnavailable
-                    ? "macOS now draws the menu bar as one piece, so no\nthird-party app can move or hide the icons in it."
+                    ? "macOS now draws the menu bar as one piece and\nignores Pelmet's divider. Make Room lists other ways."
                     : "⌘-drag important icons toward the clock,\nor quit unused menu bar apps.",
                 attributes: [
                     .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
