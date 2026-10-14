@@ -189,9 +189,12 @@ G7. **All off is unchanged.** With the three new settings off, no scroll or
 macOS 27 composites the whole menu bar into a single system window: nothing is
 reported at the status-item window level, every `NSStatusItem` returns the same
 placeholder frame, and inflating the divider displaces nothing. Pelmet detects
-this at runtime and must never claim a collapse it did not perform. These steps
-need a Mac on macOS 27; on macOS 13 to 26 the same steps must show the ordinary
-collapse working, which is the regression half of this section.
+this at runtime and must never claim a collapse it did not perform. Since 0.10
+the overflow collapse (next section) handles macOS 27 by default, so run these
+steps with it switched off: `defaults write com.ismatbabirli.Pelmet
+overflowCollapse -bool NO` (or `PELMET_DISABLE_OVERFLOW_COLLAPSE=1 swift run`).
+On macOS 13 to 26 the same steps must show the ordinary collapse working, which
+is the regression half of this section.
 
 43. **Detection.** Run with `PELMET_DEBUG_LAYOUT=1`. Every confirmed line reports
     `windowModel=merged` on macOS 27 and `windowModel=perItem` on macOS 26 and
@@ -217,20 +220,24 @@ collapse working, which is the regression half of this section.
     unavailable here" instead of the ⌘-drag remedy. The spacing, Control Center
     and quit-apps remedies are still listed.
 
-## Overflow collapse on macOS 27 (experimental)
+## Overflow collapse on macOS 27
 
-Off by default. `defaults write com.ismatbabirli.Pelmet experimentalOverflowCollapse
--bool YES` and relaunch (or `PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE=1 swift run`).
-macOS 27 discards a status item once its length reaches a per-display limit, so
-this collapse keeps the divider and up to sixteen invisible spacers under that limit
-and lets the bar overflow into the system's « menu. Pelmet cannot see the result
-without Accessibility, so these checks are visual. `log stream --predicate
+On by default on macOS 27. macOS 27 discards a status item once its length
+reaches a per-display limit, so this collapse keeps the divider and up to
+sixteen invisible spacers under that limit and lets the bar overflow into the
+system's « menu. The spacers register after the divider and so land to its
+left: an icon dropped between them and ╱ can stay visible on a wide display,
+but nothing right of ╱ is ever hidden. Pelmet cannot see the result without
+Accessibility, so these checks are visual. `log stream --predicate
 'process == "MenuBarAgent"' --info | grep overflow` shows
-`MenuBar.overflow.indicatorShown` each time the « appears.
+`MenuBar.overflow.indicatorShown` each time the « appears. ⌘-drag does not
+work on the 27.2 betas (a drag drops after about 0.13 s), so test on a
+released macOS 27.
 
 49. **First launch places the block.** The ╱ divider appears at the LEFT end of
     the status icons (a fresh name always lands there on macOS 27), with nothing
-    to its left. ⌘-drag two or three icons to its left.
+    to its left. ⌘-drag two or three icons to its left. New installs see tips
+    that say exactly that.
 50. **Collapse hides them.** Click the chevron. The icons left of ╱ move behind
     the « and ╱ goes with them. Everything right of ╱, the chevron, and the
     clock stay put. Open the «: the hidden icons are listed and work. Note any
@@ -238,13 +245,12 @@ without Accessibility, so these checks are visual. `log stream --predicate
 51. **Expand restores the order.** Click the chevron again. The hidden icons come
     back in the order they had before, and nothing else moved.
 52. **Just right of ╱.** ⌘-drag an icon so it sits immediately right of ╱, then
-    collapse. It must stay visible. If it hides, it landed between ╱ and the
-    invisible spacers.
+    collapse. It must stay visible, on every display.
 53. **Relaunch keeps the block.** Quit and relaunch: ╱ is where you left it and
     the icons left of it are still the ones that hide.
 54. **External display.** Connect one. Collapse: the same icons hide on both
     displays' bars (one length applies to all of them). Disconnect while
     collapsed: nothing reappears and the « stays usable.
-55. **Flag off is unchanged.** Delete the key and relaunch. Steps 43 to 48 hold
-    again, and on macOS 26 and earlier the ordinary collapse is untouched with
-    the flag on or off.
+55. **Switched off is the old behavior.** `defaults write com.ismatbabirli.Pelmet
+    overflowCollapse -bool NO` and relaunch: steps 43 to 48 hold again. On macOS
+    26 and earlier the ordinary collapse is untouched either way.

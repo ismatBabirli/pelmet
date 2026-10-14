@@ -13,8 +13,8 @@ import PelmetCore
 /// it off the screen edge — the same technique used by Hidden Bar / Dozer.
 /// No private APIs, no Screen Recording or Accessibility permission required.
 ///
-/// macOS 27 discards a status item that long, so the experimental overflow
-/// collapse keeps the separator (plus invisible spacers to its right) under the
+/// macOS 27 discards a status item that long, so there the overflow collapse
+/// keeps the separator (plus invisible spacers to its left) under the
 /// per-display limit instead. The bar then overflows from the left, and macOS
 /// moves the items left of the separator into its own « menu. Same
 /// permissions: none.
@@ -54,18 +54,24 @@ final class MenuBarManager: NSObject {
     /// macOS 27 keeps every position in MenuBarAgent's own table. An app can
     /// neither read nor seed one there, and a name the table has never seen
     /// lands at the LEFT end of the bar. So the overflow collapse registers
-    /// fresh names, spacers first and separator last, which lands them as
-    /// [╱][spacers] with the spacers between the divider and the visible icons.
-    /// The toggle keeps its name, and with it the spot the user gave it.
-    private let overflowSeparatorAutosaveName = "Pelmet_Separator_v27"
+    /// fresh names, separator first and spacers after it, which lands them as
+    /// [spacers][╱] at the left end, with every existing icon visible to the
+    /// divider's right. The toggle keeps its name, and with it its spot.
+    ///
+    /// Spacers left of the divider fail open. The bar overflows from the left
+    /// until the rest fits, so an icon dropped between the spacers and ╱ can
+    /// stay visible on a wide display, but nothing right of ╱ is ever hidden.
+    /// Spacers on the right would fail closed: an icon dropped just right of ╱
+    /// would land left of them and vanish into the « with the hidden ones.
+    private let overflowSeparatorAutosaveName = "Pelmet_Divider_27"
     private func overflowSpacerAutosaveName(_ index: Int) -> String {
-        "Pelmet_Spacer\(index)_v27"
+        "Pelmet_Spacer\(index)_27"
     }
 
     /// Decided once at launch: it determines which status items exist, and the
-    /// spacers have to register before the separator. The OS version stands in
+    /// separator has to register before the spacers. The OS version stands in
     /// for the merged-bar measurement, which only arrives after items exist.
-    private let usesOverflowCollapse = Preferences.experimentalOverflowCollapse
+    let usesOverflowCollapse = Preferences.overflowCollapseEnabled
         && ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27
 
     private var activeSeparatorAutosaveName: String {
@@ -134,15 +140,16 @@ final class MenuBarManager: NSObject {
         toggleItem.isVisible = true
         configureToggleButton(toggleItem)
 
-        // Between the toggle and the separator: see overflowSeparatorAutosaveName.
-        if usesOverflowCollapse {
-            overflowSpacers = makeOverflowSpacers()
-        }
-
         separatorItem = NSStatusBar.system.statusItem(withLength: expandedSeparatorLength)
         separatorItem.autosaveName = activeSeparatorAutosaveName
         separatorItem.isVisible = true
         configureSeparatorButton(separatorItem)
+
+        // After the separator, so they land left of it: see
+        // overflowSeparatorAutosaveName.
+        if usesOverflowCollapse {
+            overflowSpacers = makeOverflowSpacers()
+        }
 
         NotchLayoutMonitor.shared.attach(
             separator: separatorItem,
@@ -403,7 +410,8 @@ final class MenuBarManager: NSObject {
     }
 
     /// All of them on every launch, even when fewer are inflated: a spacer name
-    /// first registered on a later launch would land left of the divider.
+    /// first registered on a later launch would land at the far left, beyond
+    /// the icons already hidden, where it pushes nothing.
     private func makeOverflowSpacers() -> [NSStatusItem] {
         (0..<OverflowCollapseGeometry.spacerCount).map { index in
             let spacer = NSStatusBar.system.statusItem(withLength: 0)
@@ -609,7 +617,8 @@ final class MenuBarManager: NSObject {
                 separator: separatorItem,
                 toggle: toggleItem,
                 separatorVisible: classification?.separatorHealth == .visible,
-                toggleVisible: toggleOK
+                toggleVisible: toggleOK,
+                dividerStartsAtLeft: usesOverflowCollapse
             )
         }
         if plan.attemptLayoutEducation, let classification {
