@@ -66,9 +66,9 @@ struct MakeRoomView: View {
                 remedy(
                     symbol: "exclamationmark.triangle",
                     title: "Hiding icons is unavailable here",
-                    text: "This version of macOS draws the whole menu bar as a single piece, so the ╱ "
-                        + "divider no longer pushes anything off the edge and no third-party app can "
-                        + "hide what's in the bar. The options below are about making icons fit, not hiding them."
+                    text: "This version of macOS draws the whole menu bar as a single piece and ignores "
+                        + "the ╱ divider at the size it needs to push icons off the edge. "
+                        + "The options below are about making icons fit, not hiding them."
                 )
             }
 

@@ -10,8 +10,7 @@ cask "pelmet" do
   version "0.1.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/ismatBabirli/pelmet/releases/download/v#{version}/Pelmet-#{version}.dmg",
-      verified: "github.com/ismatBabirli/pelmet/"
+  url "https://github.com/ismatBabirli/pelmet/releases/download/v#{version}/Pelmet-#{version}.dmg"
   name "Pelmet"
   desc "Menu bar organizer that reclaims the icons a MacBook notch hides"
   homepage "https://pelmet.xyz/"
