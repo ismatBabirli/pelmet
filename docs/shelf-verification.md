@@ -196,7 +196,7 @@ collapse working, which is the regression half of this section.
 Off by default. `defaults write com.ismatbabirli.Pelmet experimentalOverflowCollapse
 -bool YES` and relaunch (or `PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE=1 swift run`).
 macOS 27 discards a status item once its length reaches a per-display limit, so
-this collapse keeps the divider and up to six invisible spacers under that limit
+this collapse keeps the divider and up to sixteen invisible spacers under that limit
 and lets the bar overflow into the system's « menu. Pelmet cannot see the result
 without Accessibility, so these checks are visual. `log stream --predicate
 'process == "MenuBarAgent"' --info | grep overflow` shows
