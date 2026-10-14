@@ -13,6 +13,12 @@ import PelmetCore
 /// it off the screen edge — the same technique used by Hidden Bar / Dozer.
 /// No private APIs, no Screen Recording or Accessibility permission required.
 ///
+/// macOS 27 discards a status item that long, so the experimental overflow
+/// collapse keeps the separator (plus invisible spacers to its right) under the
+/// per-display limit instead. The bar then overflows from the left, and macOS
+/// moves the items left of the separator into its own « menu. Same
+/// permissions: none.
+///
 /// On notched MacBooks, macOS silently refuses to draw status items that
 /// don't fit beside the notch. Pelmet can't force them on screen (nobody
 /// can, without heavy permissions) — but it detects the situation via
@@ -45,6 +51,27 @@ final class MenuBarManager: NSObject {
     private let toggleAutosaveName = "Pelmet_Toggle"
     private let separatorAutosaveName = "Pelmet_Separator"
 
+    /// macOS 27 keeps every position in MenuBarAgent's own table. An app can
+    /// neither read nor seed one there, and a name the table has never seen
+    /// lands at the LEFT end of the bar. So the overflow collapse registers
+    /// fresh names, spacers first and separator last, which lands them as
+    /// [╱][spacers] with the spacers between the divider and the visible icons.
+    /// The toggle keeps its name, and with it the spot the user gave it.
+    private let overflowSeparatorAutosaveName = "Pelmet_Separator_v27"
+    private func overflowSpacerAutosaveName(_ index: Int) -> String {
+        "Pelmet_Spacer\(index)_v27"
+    }
+
+    /// Decided once at launch: it determines which status items exist, and the
+    /// spacers have to register before the separator. The OS version stands in
+    /// for the merged-bar measurement, which only arrives after items exist.
+    private let usesOverflowCollapse = Preferences.experimentalOverflowCollapse
+        && ProcessInfo.processInfo.operatingSystemVersion.majorVersion >= 27
+
+    private var activeSeparatorAutosaveName: String {
+        usesOverflowCollapse ? overflowSeparatorAutosaveName : separatorAutosaveName
+    }
+
     // MARK: - State
 
     private(set) var isCollapsed = false
@@ -55,6 +82,8 @@ final class MenuBarManager: NSObject {
 
     private var toggleItem: NSStatusItem!
     private var separatorItem: NSStatusItem!
+    /// Empty unless `usesOverflowCollapse`.
+    private var overflowSpacers: [NSStatusItem] = []
     private var updaterObservation: AnyCancellable?
     private var updateAvailableVersion: String?
 
@@ -88,8 +117,13 @@ final class MenuBarManager: NSObject {
         toggleItem.isVisible = true
         configureToggleButton(toggleItem)
 
+        // Between the toggle and the separator: see overflowSeparatorAutosaveName.
+        if usesOverflowCollapse {
+            overflowSpacers = makeOverflowSpacers()
+        }
+
         separatorItem = NSStatusBar.system.statusItem(withLength: expandedSeparatorLength)
-        separatorItem.autosaveName = separatorAutosaveName
+        separatorItem.autosaveName = activeSeparatorAutosaveName
         separatorItem.isVisible = true
         configureSeparatorButton(separatorItem)
 
@@ -102,13 +136,14 @@ final class MenuBarManager: NSObject {
             self?.apply(classification)
         }
 
-        // Recompute the bounded collapse length when displays change.
+        // Recompute the collapse lengths when displays change. In the overflow
+        // collapse a narrower display can put the old length past its limit.
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
             guard let self, self.isCollapsed else { return }
-            self.separatorItem.length = self.collapsedSeparatorLength
+            self.applyCollapsedLengths()
         }
 
         // Never auto-collapse under an open tip popover or Pelmet window;
@@ -257,9 +292,12 @@ final class MenuBarManager: NSObject {
     }
 
     /// True once measurement has confirmed the menu bar is one composited
-    /// window (macOS 27). Inflating the divider displaces nothing there, so
-    /// collapsing is not a thing Pelmet can do, only a thing it can explain.
-    var collapseIsUnavailable: Bool { menuBarWindowModel == .merged }
+    /// window (macOS 27) and the overflow collapse is off. Inflating the
+    /// divider displaces nothing there, so collapsing is not a thing Pelmet
+    /// can do, only a thing it can explain.
+    var collapseIsUnavailable: Bool {
+        menuBarWindowModel == .merged && !usesOverflowCollapse
+    }
 
     func expand(scheduleRehide: Bool = true) {
         setExpanded(persistState: true, scheduleRehide: scheduleRehide)
@@ -274,7 +312,7 @@ final class MenuBarManager: NSObject {
         if persistState {
             Preferences.isCollapsed = false
         }
-        separatorItem.length = expandedSeparatorLength
+        applyExpandedLengths()
         separatorItem.button?.image = separatorImage()
         updateToggleIcon()
         if scheduleRehide { scheduleRehideIfNeeded() }
@@ -298,7 +336,7 @@ final class MenuBarManager: NSObject {
         isCollapsed = true
         Preferences.isCollapsed = true
         cancelRehide()
-        separatorItem.length = collapsedSeparatorLength
+        applyCollapsedLengths()
         // Hide the divider glyph while it's a giant invisible spacer.
         separatorItem.button?.image = nil
         // A count would now include the icons we intentionally hid — clear
@@ -307,6 +345,55 @@ final class MenuBarManager: NSObject {
         separatorSwallowed = false
         updateToggleIcon()
         NotchLayoutMonitor.shared.requestMeasurement(reason: .collapseSettled)
+    }
+
+    // MARK: - Collapse lengths
+
+    private func applyCollapsedLengths() {
+        guard usesOverflowCollapse else {
+            separatorItem.length = collapsedSeparatorLength
+            return
+        }
+        let plan = OverflowCollapseGeometry.plan(displays: overflowDisplays())
+        separatorItem.length = plan.unitLength
+        for (index, spacer) in overflowSpacers.enumerated() {
+            let isActive = index < plan.activeSpacers
+            spacer.length = isActive ? plan.unitLength : 0
+            spacer.isVisible = isActive
+        }
+    }
+
+    private func applyExpandedLengths() {
+        separatorItem.length = expandedSeparatorLength
+        for spacer in overflowSpacers {
+            spacer.length = 0
+            spacer.isVisible = false
+        }
+    }
+
+    private func overflowDisplays() -> [OverflowCollapseGeometry.Display] {
+        NSScreen.screens.map { screen in
+            OverflowCollapseGeometry.Display(
+                width: screen.frame.width,
+                statusWidth: screen.auxiliaryTopRightArea?.width
+            )
+        }
+    }
+
+    /// All of them on every launch, even when fewer are inflated: a spacer name
+    /// first registered on a later launch would land left of the divider.
+    private func makeOverflowSpacers() -> [NSStatusItem] {
+        (0..<OverflowCollapseGeometry.spacerCount).map { index in
+            let spacer = NSStatusBar.system.statusItem(withLength: 0)
+            // Name first: the visibility below is saved under it.
+            spacer.autosaveName = overflowSpacerAutosaveName(index)
+            spacer.button?.setAccessibilityElement(false)
+            // On macOS 27 a hidden item keeps its slot in MenuBarAgent's table
+            // while taking no room. (On 26 and earlier this would delete its
+            // saved position, which is why nothing else in Pelmet does it.)
+            spacer.isVisible = false
+            return spacer
+        }
     }
 
     // MARK: - Show on hover
@@ -425,7 +512,7 @@ final class MenuBarManager: NSObject {
         LayoutStatus.shared.refresh(
             swallowedCount: classification.swallowedCount,
             shelfEntries: entries,
-            canHideIcons: classification.windowModel != .merged
+            canHideIcons: classification.windowModel != .merged || usesOverflowCollapse
         )
         ShelfPanelController.shared.update(entries: entries)
     }
@@ -864,12 +951,13 @@ final class MenuBarManager: NSObject {
         let wasCollapsed = isCollapsed
         separatorItem = StatusItemRescuer.recreate(
             separatorItem,
-            autosaveName: separatorAutosaveName,
-            length: wasCollapsed ? collapsedSeparatorLength : expandedSeparatorLength,
+            autosaveName: activeSeparatorAutosaveName,
+            length: expandedSeparatorLength,
             preferredPosition: 1,
             configure: { [weak self] item in self?.configureSeparatorButton(item) }
         )
         if wasCollapsed {
+            applyCollapsedLengths()
             separatorItem.button?.image = nil
         }
         NotchLayoutMonitor.shared.reattach(separator: separatorItem, toggle: toggleItem)

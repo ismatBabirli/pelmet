@@ -44,6 +44,7 @@ enum Preferences {
         static let supportNudgeShowCount = "supportNudgeShowCount"
         static let supportNudgeDismissed = "supportNudgeDismissed"
         static let softwareIslandRules = "softwareIslandRules"
+        static let experimentalOverflowCollapse = "experimentalOverflowCollapse"
 
         /// Which key holds an action's shortcut. Two keys rather than one blob, so
         /// a corrupt value costs one shortcut instead of both.
@@ -384,6 +385,15 @@ enum Preferences {
     static var hasEverManagedItems: Bool {
         get { UserDefaults.standard.bool(forKey: Keys.hasEverManagedItems) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.hasEverManagedItems) }
+    }
+
+    /// Prototype switch for collapsing into macOS 27's « overflow. No UI yet:
+    /// `defaults write com.ismatbabirli.Pelmet experimentalOverflowCollapse
+    /// -bool YES`, or `PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE=1` for `swift run`.
+    /// Read once at launch, because it decides which status items exist.
+    static var experimentalOverflowCollapse: Bool {
+        ProcessInfo.processInfo.environment["PELMET_EXPERIMENTAL_OVERFLOW_COLLAPSE"] == "1"
+            || UserDefaults.standard.bool(forKey: Keys.experimentalOverflowCollapse)
     }
 
     static func resetOnboardingFlags() {
