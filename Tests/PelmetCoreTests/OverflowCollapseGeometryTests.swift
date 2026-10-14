@@ -35,8 +35,19 @@ struct OverflowCollapseGeometryTests {
         #expect(plan.activeSpacers == 4)
     }
 
-    @Test func testSpacersAreCappedAtTheRegisteredCount() {
+    @Test func testWideExternalBesideTheNotchIsFullyCovered() {
         let plan = OverflowCollapseGeometry.plan(displays: [notchedBuiltIn, external3840])
+
+        // 9 × 433 = 3897 ≥ 3840; 8 × 433 = 3464 is not.
+        #expect(plan.activeSpacers == 8)
+    }
+
+    @Test func testSpacersAreCappedAtTheRegisteredCount() {
+        // Past anything Pelmet expects: an 8K-wide bar beside a scaled Air.
+        let plan = OverflowCollapseGeometry.plan(displays: [
+            Display(width: 1280, statusWidth: 560),
+            Display(width: 7680),
+        ])
 
         #expect(plan.activeSpacers == OverflowCollapseGeometry.spacerCount)
     }
@@ -75,6 +86,10 @@ struct OverflowCollapseGeometryTests {
         [Display(width: 1512, statusWidth: 663.5)],
         [Display(width: 1920)],
         [Display(width: 2560), Display(width: 1512, statusWidth: 663.5)],
+        [Display(width: 3840), Display(width: 1512, statusWidth: 663.5)],
+        [Display(width: 5120), Display(width: 1470, statusWidth: 640)],
+        // The widest setup the spacer count is sized for.
+        [Display(width: 6016), Display(width: 1280, statusWidth: 560)],
     ])
     func testDividerAndSpacersCoverTheWidestStatusArea(displays: [Display]) {
         let plan = OverflowCollapseGeometry.plan(displays: displays)

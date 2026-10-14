@@ -40,8 +40,12 @@ public enum OverflowCollapseGeometry {
     }
 
     /// Fixed, so every launch registers the same autosave names: a name first
-    /// seen on a later launch lands leftmost, outside the divider's block.
-    public static let spacerCount = 6
+    /// seen on a later launch lands leftmost, outside the divider's block. So
+    /// it has to cover the widest setup up front. Sixteen spans a 6016 pt Pro
+    /// Display XDR beside a MacBook Air scaled to 1280 pt (a 356 pt unit), the
+    /// smallest unit and the widest status area Pelmet expects together.
+    /// Uninflated spacers stay hidden and take no room.
+    public static let spacerCount = 16
 
     /// Distance kept under a limit. It absorbs the measurements' imprecision
     /// and the 16 pt of chrome AppKit adds around each item's length.
