@@ -108,11 +108,14 @@ gracefully:
 > kills the expanding-spacer mechanic and the per-item detection every manager
 > relies on, Pelmet's included. Pelmet now detects the merged bar at
 > runtime (`StatusItemWindowModel`) and refuses to fake a collapse, so the
-> chevron never claims icons are hidden when they are not. Restoring the
-> feature itself is a separate compatibility pass and may not be possible
-> without permissions the zero-permission core rules out. The Shelf's audience
-> until then is the large Sequoia/Tahoe installed base, which gets nothing
-> native.
+> chevron never claims icons are hidden when they are not. The cause is
+> narrower than the merged window: macOS 27 discards any status item whose
+> length reaches a per-display limit (about 0.79 of the area right of the
+> notch, half the width elsewhere), and Pelmet's spacer is far past it. Below
+> the limit the bar overflows from the left into the system's « menu, which
+> hides icons with no permissions at all. That collapse is being prototyped
+> behind a flag (#52). The Shelf's audience until it ships is the large
+> Sequoia/Tahoe installed base, which gets nothing native.
 
 ### ⚡ Phase 3 — Actionable Power Features
 
